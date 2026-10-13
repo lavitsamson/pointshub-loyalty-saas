@@ -57,6 +57,7 @@ model Tenant {
   updatedAt            DateTime @updatedAt
 
   memberships    Membership[]
+  invitations    Invitation[]
   customers      Customer[]
   loyaltyProgram LoyaltyProgram?
   tiers          Tier[]
@@ -97,6 +98,27 @@ model Membership {
 
   @@unique([userId, tenantId])
   @@index([tenantId, role])
+}
+
+/// A pending or settled invitation to join a tenant. The emailed link carries a signed token
+/// naming this row; the row makes the link single-use and revocable.
+model Invitation {
+  id              String    @id @default(uuid(7)) @db.Uuid
+  tenantId        String    @db.Uuid
+  /// Stored lower-cased.
+  email           String
+  role            Role
+  invitedByUserId String    @db.Uuid
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  revokedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, email])
 }
 
 /// Refresh tokens for both merchant users and portal customers (exactly one owner is set).
