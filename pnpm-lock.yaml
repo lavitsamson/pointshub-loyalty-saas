@@ -449,6 +449,9 @@ importers:
       '@pointshub/config':
         specifier: workspace:*
         version: link:../config
+      '@pointshub/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@types/node':
         specifier: 26.6.3
         version: 26.6.3
