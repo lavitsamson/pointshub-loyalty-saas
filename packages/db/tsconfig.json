@@ -1,0 +1,8 @@
+{
+  "extends": "@pointshub/config/tsconfig/node.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist"
+  },
+  "include": ["src", "prisma", "prisma.config.ts"]
+}
