@@ -1,0 +1,9 @@
+{
+  "extends": "@pointshub/config/tsconfig/nest.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist",
+    "types": ["node", "jest"]
+  },
+  "include": ["src", "test"]
+}
