@@ -16,6 +16,8 @@ export const ProblemDetailsSchema = z.object({
       }),
     )
     .optional(),
+  /** Present on 429 responses; mirrors the Retry-After header. */
+  retryAfterSeconds: z.number().int().optional(),
 });
 export type ProblemDetails = z.infer<typeof ProblemDetailsSchema>;
 
