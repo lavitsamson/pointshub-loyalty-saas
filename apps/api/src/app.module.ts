@@ -1,10 +1,20 @@
 import { type DynamicModule, Module } from '@nestjs/common';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { randomUUID } from 'node:crypto';
 import { LoggerModule } from 'nestjs-pino';
+import { AuditModule } from './audit/audit.module';
+import { AccessTokenGuard } from './auth/access-token.guard';
+import { AuthModule } from './auth/auth.module';
+import { CsrfGuard } from './common/http/csrf.guard';
 import { ConfigModule } from './config/config.module';
 import { type Env } from './config/env';
 import { HealthModule } from './health/health.module';
 import { InfraModule } from './infra/infra.module';
+import { MailModule } from './mail/mail.module';
+import { TeamModule } from './team/team.module';
+import { TenantAccessGuard } from './tenancy/tenant-access.guard';
+import { TenantContextInterceptor } from './tenancy/tenant-context.interceptor';
+import { TenantsModule } from './tenants/tenants.module';
 
 const REQUEST_ID_HEADER = 'x-request-id';
 
@@ -39,7 +49,19 @@ export class AppModule {
           },
         }),
         InfraModule,
+        MailModule,
+        AuditModule,
+        AuthModule,
         HealthModule,
+        TenantsModule,
+        TeamModule,
+      ],
+      // Global guards run in this order: CSRF header → session → tenant membership/role.
+      providers: [
+        { provide: APP_GUARD, useClass: CsrfGuard },
+        { provide: APP_GUARD, useClass: AccessTokenGuard },
+        { provide: APP_GUARD, useClass: TenantAccessGuard },
+        { provide: APP_INTERCEPTOR, useClass: TenantContextInterceptor },
       ],
     };
   }
