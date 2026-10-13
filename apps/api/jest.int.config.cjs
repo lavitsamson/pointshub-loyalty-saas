@@ -7,5 +7,7 @@ module.exports = {
   transform: {
     '^.+\.ts$': ['ts-jest', { tsconfig: 'tsconfig.json', diagnostics: { ignoreCodes: [151002] } }],
   },
-  testTimeout: 120_000,
+  globalSetup: '<rootDir>/test/support/global-setup.ts',
+  globalTeardown: '<rootDir>/test/support/global-teardown.ts',
+  testTimeout: 60_000,
 };

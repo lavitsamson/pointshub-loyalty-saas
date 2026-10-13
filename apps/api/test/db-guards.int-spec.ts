@@ -1,23 +1,21 @@
+import { randomUUID } from 'node:crypto';
 import { createPrismaClient, type PrismaClient } from '@pointshub/db';
-import { startInfra, type TestInfra } from './support/infra';
+import { testEnv } from './support/infra';
 
 describe('Database-level guards', () => {
-  let infra: TestInfra;
   let prisma: PrismaClient;
 
-  beforeAll(async () => {
-    infra = await startInfra();
-    prisma = createPrismaClient({ connectionString: infra.env.DATABASE_URL });
+  beforeAll(() => {
+    prisma = createPrismaClient({ connectionString: testEnv().DATABASE_URL });
   });
 
   afterAll(async () => {
     await prisma?.$disconnect();
-    await infra?.stop();
   });
 
   async function createCustomer() {
     const tenant = await prisma.tenant.create({
-      data: { name: 'Guard Test', slug: `guard-${Date.now()}` },
+      data: { name: 'Guard Test', slug: `guard-${randomUUID()}` },
     });
     const customer = await prisma.customer.create({
       data: { tenantId: tenant.id, email: 'c@example.com', name: 'C' },

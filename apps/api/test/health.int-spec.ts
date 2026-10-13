@@ -1,20 +1,18 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
-import { startInfra, type TestInfra } from './support/infra';
-import { createTestApp } from './support/test-app';
+import { createTestApp, type TestApp } from './support/test-app';
 
 describe('Health and HTTP basics', () => {
-  let infra: TestInfra;
+  let testApp: TestApp;
   let app: NestExpressApplication;
 
   beforeAll(async () => {
-    infra = await startInfra();
-    app = await createTestApp(infra.env);
+    testApp = await createTestApp();
+    app = testApp.app;
   });
 
   afterAll(async () => {
-    await app?.close();
-    await infra?.stop();
+    await testApp?.close();
   });
 
   it('GET /health/live returns ok', async () => {
