@@ -38,7 +38,7 @@ describe('ProblemDetailsFilter', () => {
     const host = {
       switchToHttp: () => ({
         getRequest: () => ({ originalUrl: '/api/v1/missing' }),
-        getResponse: () => ({ status }),
+        getResponse: () => ({ status, setHeader: jest.fn() }),
       }),
     };
 

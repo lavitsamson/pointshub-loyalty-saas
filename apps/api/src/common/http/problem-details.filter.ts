@@ -27,6 +27,9 @@ export class ProblemDetailsFilter implements ExceptionFilter {
       this.logger.error(exception instanceof Error ? exception.stack : String(exception));
     }
 
+    if (problem.retryAfterSeconds !== undefined) {
+      response.setHeader('Retry-After', String(problem.retryAfterSeconds));
+    }
     response.status(problem.status).type(PROBLEM_JSON_CONTENT_TYPE).json(problem);
   }
 
