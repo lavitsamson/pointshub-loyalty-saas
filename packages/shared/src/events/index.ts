@@ -14,6 +14,38 @@ export const EventTypeSchema = z.enum([
 ]);
 export type EventType = z.infer<typeof EventTypeSchema>;
 
+const Id = z.string().min(1);
+const LedgerMovement = z.object({
+  customerId: Id,
+  ledgerEntryId: Id,
+  points: z.number().int(),
+  balanceAfter: z.number().int(),
+});
+
+/** Payload contract for each event type, version 1. */
+export const EventPayloadSchemas = {
+  'customer.created': z.object({ customerId: Id }),
+  'points.earned': LedgerMovement.extend({ purchaseId: Id, amount: z.string() }),
+  'points.redeemed': LedgerMovement.extend({ redemptionId: Id, rewardId: Id }),
+  'points.adjusted': LedgerMovement.extend({ reason: z.string() }),
+  'points.expired': LedgerMovement,
+  'tier.changed': z.object({
+    customerId: Id,
+    fromTierId: Id.nullable(),
+    toTierId: Id,
+    toTierName: z.string(),
+  }),
+  'redemption.fulfilled': z.object({ redemptionId: Id, customerId: Id, rewardId: Id }),
+  'redemption.cancelled': z.object({
+    redemptionId: Id,
+    customerId: Id,
+    rewardId: Id,
+    pointsRefunded: z.number().int(),
+  }),
+} satisfies Record<EventType, z.ZodType>;
+
+export type EventPayload<T extends EventType> = z.infer<(typeof EventPayloadSchemas)[T]>;
+
 /**
  * Envelope shared by every event on the bus. Payloads are versioned with the
  * envelope so consumers can reject shapes they do not understand.

@@ -1,4 +1,4 @@
-import { EventEnvelopeSchema } from '.';
+import { EventEnvelopeSchema, EventPayloadSchemas, EventTypeSchema } from '.';
 
 const valid = {
   id: '0192a6f0-0000-7000-8000-000000000001',
@@ -26,5 +26,24 @@ describe('EventEnvelopeSchema', () => {
     expect(EventEnvelopeSchema.safeParse({ ...valid, occurredAt: 'yesterday' }).success).toBe(
       false,
     );
+  });
+});
+
+describe('EventPayloadSchemas', () => {
+  it('defines a payload for every event type', () => {
+    expect(Object.keys(EventPayloadSchemas).sort()).toEqual([...EventTypeSchema.options].sort());
+  });
+
+  it('validates a points.earned payload', () => {
+    const payload = {
+      customerId: 'c',
+      ledgerEntryId: 'l',
+      points: 42,
+      balanceAfter: 142,
+      purchaseId: 'p',
+      amount: '4.20',
+    };
+    expect(EventPayloadSchemas['points.earned'].parse(payload)).toEqual(payload);
+    expect(EventPayloadSchemas['points.earned'].safeParse({ customerId: 'c' }).success).toBe(false);
   });
 });
