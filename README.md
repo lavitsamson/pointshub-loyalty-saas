@@ -110,11 +110,12 @@ All demo accounts use the password `DemoPass123!`.
 - [ADR 0002 — Authentication and sessions](docs/adr/0002-authentication-and-sessions.md):
   15-minute JWTs and rotating refresh tokens in httpOnly cookies, with reuse detection that
   revokes the whole session family; roles are checked per request so changes apply instantly.
+- [ADR 0003 — Points ledger](docs/adr/0003-points-ledger.md): an append-only ledger (enforced by a
+  trigger) with a cached balance updated under a row lock; idempotent purchases and exact decimal
+  maths, proven by a 200-operation invariant test and concurrent-redemption tests.
 
 Smaller decisions worth knowing:
 
-- **Append-only ledger enforced in the database.** A trigger rejects any `UPDATE` on
-  `PointsLedgerEntry`, so balances can always be rebuilt from history.
 - **Supply-chain guard.** `pnpm-workspace.yaml` sets `minimumReleaseAge` to 14 days and dependency
   install scripts are opt-in.
 - **TypeScript 6.** TypeScript 7 is available, but typescript-eslint, ts-jest and `@nestjs/swagger`

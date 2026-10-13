@@ -35,14 +35,19 @@
 
 ## 3. Core loyalty
 
-- [ ] Programme, tiers, campaigns
-- [ ] Customers CRUD, bulk actions, CSV export
-- [ ] Purchases with idempotency
-- [ ] Ledger and adjustments
-- [ ] Rewards and redemptions
-- [ ] Ledger invariant test (200 random operations)
-- [ ] Concurrent redemption test
-- [ ] Seed: customers and six months of purchase history
+- [x] Points rules in `packages/shared`: exact earning maths, tier selection, FIFO expiry
+- [x] Programme settings, tiers and campaigns (CRUD, audited)
+- [x] Customers: search, tier/tag filters, three sort orders with keyset pagination, CRUD
+- [x] Bulk actions (adjust points, add/remove tag; up to 500, all or nothing)
+- [x] Streaming CSV export with formula-injection protection
+- [x] Purchases with Idempotency-Key (replay, race and key-reuse handling)
+- [x] Ledger service: row lock, non-negative balance, cached balance and tier, outbox events
+- [x] Adjustments with reason (audited)
+- [x] Rewards and redemptions: stock, counter codes, fulfil, cancel with REVERSAL
+- [x] Tests: ledger invariant after 200 random operations; concurrent redemptions (balance and stock)
+- [x] Tenant isolation suite extended to every new route, including ids passed in request bodies
+- [x] Seed: ~300 customers with six months of history, daily stats and a portal demo customer
+- [x] ADR 0003: points ledger
 
 ## 4. Merchant UI
 
