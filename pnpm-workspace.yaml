@@ -1,0 +1,19 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Supply-chain guard: refuse to resolve any version published less than 14 days ago.
+minimumReleaseAge: 20160
+
+# Dependency install scripts are opt-in.
+allowBuilds:
+  '@parcel/watcher': true
+  '@prisma/engines': true
+  argon2: true
+  esbuild: true
+  prisma: true
+  unrs-resolver: true
+  '@scarf/scarf': false
+  cpu-features: false
+  protobufjs: false
+  ssh2: false
