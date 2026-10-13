@@ -111,3 +111,6 @@ export function withTenantScope(client: PrismaClient, getTenantId: () => string 
 }
 
 export type TenantScopedClient = ReturnType<typeof withTenantScope>;
+
+/** The client passed to `prisma.scoped.$transaction(async (tx) => ...)`. */
+export type ScopedTransaction = Parameters<Parameters<TenantScopedClient['$transaction']>[0]>[0];
