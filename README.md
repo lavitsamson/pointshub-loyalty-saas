@@ -1,5 +1,7 @@
 # PointsHub
 
+[![CI](https://github.com/lavitsamson/pointshub-loyalty-saas/actions/workflows/ci.yml/badge.svg)](https://github.com/lavitsamson/pointshub-loyalty-saas/actions/workflows/ci.yml)
+
 **Multi-tenant loyalty and rewards platform for cafés, salons and local shops.**
 Staff record purchases, customers earn points and climb tiers, and owners see what keeps their
 regulars coming back.
