@@ -6,6 +6,7 @@ import {
   TEST_PASSWORD,
   uniqueEmail,
 } from './support/api-client';
+import { addMember as addMemberTo } from './support/fixtures';
 import { createTestApp, type TestApp } from './support/test-app';
 
 const INVITE_LINK = /\/invite\/([^\s]+)/;
@@ -21,17 +22,7 @@ describe('Team and invitations', () => {
     await t.close();
   });
 
-  /** Invites `email` into the owner's business and accepts as a brand-new account. */
-  async function addMember(owner: Owner, role: 'ADMIN' | 'STAFF') {
-    const email = uniqueEmail(role.toLowerCase());
-    await owner.client.post(`/tenants/${owner.tenantId}/invitations`, { email, role }).expect(201);
-    const token = t.mailbox.tokenFor(email, INVITE_LINK);
-    const client = new ApiClient(t.app);
-    const res = await client
-      .post(`/invitations/${token}/accept`, { name: `New ${role}`, password: TEST_PASSWORD })
-      .expect(200);
-    return { client, email, userId: (res.body as MeResponse).user.id, token };
-  }
+  const addMember = (owner: Owner, role: 'ADMIN' | 'STAFF') => addMemberTo(t, owner, role);
 
   describe('invitations', () => {
     it('lets a new person create an account from the emailed link', async () => {
