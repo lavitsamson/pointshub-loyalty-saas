@@ -3,7 +3,7 @@ import type { InvitableRole, Member, Paginated, PaginationQuery } from '@pointsh
 import { AuditService } from '../audit/audit.service';
 import type { RequestMeta } from '../auth/decorators';
 import { ProblemException } from '../common/http/problem.exception';
-import { afterCursor, NEWEST_FIRST, toPage } from '../common/pagination/cursor';
+import { afterCursor, NEWEST_FIRST, orderBy, toPage } from '../common/pagination/cursor';
 import { PrismaService } from '../infra/prisma.service';
 import { canManageMember } from '../tenancy/permissions';
 import type { TenantContext } from '../tenancy/tenant-context';
@@ -28,12 +28,12 @@ export class TeamService {
 
   async list(ctx: TenantContext, query: PaginationQuery): Promise<Paginated<Member>> {
     const rows = await this.prisma.unscoped.membership.findMany({
-      where: { tenantId: ctx.tenantId, ...afterCursor(query.cursor) },
-      orderBy: NEWEST_FIRST,
+      where: { tenantId: ctx.tenantId, ...afterCursor(NEWEST_FIRST, query.cursor) },
+      orderBy: orderBy(NEWEST_FIRST),
       take: query.limit + 1,
       select: memberSelect,
     });
-    return toPage(rows, query.limit, (row) => ({
+    return toPage(rows, query.limit, NEWEST_FIRST, (row) => ({
       userId: row.user.id,
       name: row.user.name,
       email: row.user.email,

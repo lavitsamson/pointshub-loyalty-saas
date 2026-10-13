@@ -6,7 +6,7 @@ import {
   PaginationQuerySchema,
   type PaginationQuery,
 } from '@pointshub/shared';
-import { afterCursor, NEWEST_FIRST, toPage } from '../common/pagination/cursor';
+import { afterCursor, NEWEST_FIRST, orderBy, toPage } from '../common/pagination/cursor';
 import { ZodValidationPipe } from '../common/http/zod-validation.pipe';
 import { RequirePermission } from '../tenancy/decorators';
 import { Permission } from '../tenancy/permissions';
@@ -24,11 +24,11 @@ export class AuditController {
     @Query(new ZodValidationPipe(PaginationQuerySchema)) query: PaginationQuery,
   ): Promise<Paginated<AuditLogEntry>> {
     const rows = await this.audit.list({
-      where: afterCursor(query.cursor),
-      orderBy: NEWEST_FIRST,
+      where: afterCursor(NEWEST_FIRST, query.cursor),
+      orderBy: orderBy(NEWEST_FIRST),
       take: query.limit + 1,
     });
-    return toPage(rows, query.limit, (row) => ({
+    return toPage(rows, query.limit, NEWEST_FIRST, (row) => ({
       id: row.id,
       actorUserId: row.actorUserId,
       action: row.action,

@@ -19,7 +19,7 @@ import type { RequestMeta } from '../auth/decorators';
 import { PasswordService } from '../auth/password.service';
 import { InvalidTokenError, TokenService } from '../auth/token.service';
 import { ProblemException } from '../common/http/problem.exception';
-import { afterCursor, NEWEST_FIRST, toPage } from '../common/pagination/cursor';
+import { afterCursor, NEWEST_FIRST, orderBy, toPage } from '../common/pagination/cursor';
 import { RateLimiterService } from '../common/rate-limit/rate-limiter.service';
 import { PrismaService } from '../infra/prisma.service';
 import { MailService } from '../mail/mail.service';
@@ -123,12 +123,12 @@ export class InvitationsService {
         acceptedAt: null,
         revokedAt: null,
         expiresAt: { gt: new Date() },
-        ...afterCursor(query.cursor),
+        ...afterCursor(NEWEST_FIRST, query.cursor),
       },
-      orderBy: NEWEST_FIRST,
+      orderBy: orderBy(NEWEST_FIRST),
       take: query.limit + 1,
     });
-    return toPage(rows, query.limit, toInvitation);
+    return toPage(rows, query.limit, NEWEST_FIRST, toInvitation);
   }
 
   async revoke(ctx: TenantContext, invitationId: string, meta: RequestMeta): Promise<void> {
