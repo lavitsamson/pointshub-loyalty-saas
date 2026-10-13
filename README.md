@@ -58,9 +58,21 @@ Prerequisites: Node.js 24, pnpm 12 (`corepack enable`), Docker.
 pnpm install
 cp .env.example .env
 docker compose up -d
-pnpm db:migrate
+pnpm db:setup   # apply migrations and load demo data
 pnpm dev
 ```
+
+### Demo logins
+
+All demo accounts use the password `DemoPass123!`.
+
+| Login                    | Business                       | Role  |
+| ------------------------ | ------------------------------ | ----- |
+| `owner@beanbrew.demo`    | Bean & Brew Café (PRO plan)    | Owner |
+| `staff@beanbrew.demo`    | Bean & Brew Café               | Staff |
+| `owner@studiobloom.demo` | Studio Bloom Salon (FREE plan) | Owner |
+
+`pnpm db:seed` recreates the demo businesses from scratch and can be re-run at any time.
 
 | Service                  | URL                                                |
 | ------------------------ | -------------------------------------------------- |
@@ -95,6 +107,9 @@ pnpm dev
 
 - [ADR 0001 — Multi-tenancy](docs/adr/0001-multi-tenancy.md): one shared database with a
   `tenantId` on every row, enforced by a route guard, a Prisma extension and an isolation test suite.
+- [ADR 0002 — Authentication and sessions](docs/adr/0002-authentication-and-sessions.md):
+  15-minute JWTs and rotating refresh tokens in httpOnly cookies, with reuse detection that
+  revokes the whole session family; roles are checked per request so changes apply instantly.
 
 Smaller decisions worth knowing:
 

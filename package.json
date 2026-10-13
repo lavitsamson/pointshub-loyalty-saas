@@ -21,6 +21,7 @@
     "db:migrate": "pnpm --filter @pointshub/db migrate:dev",
     "db:deploy": "pnpm --filter @pointshub/db migrate:deploy",
     "db:seed": "pnpm --filter @pointshub/db seed",
+    "db:setup": "pnpm db:deploy && pnpm db:seed",
     "db:studio": "pnpm --filter @pointshub/db studio",
     "prepare": "husky"
   },

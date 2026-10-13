@@ -18,16 +18,20 @@
 
 ## 2. Auth & tenancy
 
-- [ ] Register / login / refresh / logout / me
-- [ ] Forgot / reset password
-- [ ] Refresh token rotation with reuse detection
-- [ ] Login rate limiting (Redis)
-- [ ] CSRF custom-header guard
-- [ ] Memberships and roles guard
-- [ ] Prisma tenant extension
-- [ ] Tenant isolation test harness
-- [ ] Invitations
-- [ ] Seed: tenants, users, memberships, programme, tiers
+- [x] Register / login / refresh / logout / me
+- [x] Forgot / reset password (single-use, purpose-bound tokens)
+- [x] Refresh token rotation with reuse detection
+- [x] Login rate limiting (Redis)
+- [x] CSRF custom-header guard
+- [x] Memberships, roles guard and permission matrix
+- [x] Prisma tenant extension (fails closed without a tenant context)
+- [x] Tenant isolation test suite, with a check that every tenant-scoped route is covered
+- [x] Invitations (create, list, revoke, accept for new and existing accounts)
+- [x] Team management (change role, remove, leave; last owner protected)
+- [x] Audit log for admin mutations + list endpoint
+- [x] Seed: demo tenants, users, programme, tiers, campaign, rewards
+- [x] ADR 0002: authentication and sessions
+- [ ] Auth pages in the web app (part of milestone 4)
 
 ## 3. Core loyalty
 
