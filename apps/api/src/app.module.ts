@@ -6,11 +6,15 @@ import { AuditModule } from './audit/audit.module';
 import { AccessTokenGuard } from './auth/access-token.guard';
 import { AuthModule } from './auth/auth.module';
 import { CsrfGuard } from './common/http/csrf.guard';
+import { CustomersModule } from './customers/customers.module';
 import { ConfigModule } from './config/config.module';
 import { type Env } from './config/env';
 import { HealthModule } from './health/health.module';
 import { InfraModule } from './infra/infra.module';
 import { MailModule } from './mail/mail.module';
+import { PointsModule } from './points/points.module';
+import { ProgramModule } from './program/program.module';
+import { RewardsModule } from './rewards/rewards.module';
 import { TeamModule } from './team/team.module';
 import { TenantAccessGuard } from './tenancy/tenant-access.guard';
 import { TenantContextInterceptor } from './tenancy/tenant-context.interceptor';
@@ -55,6 +59,10 @@ export class AppModule {
         HealthModule,
         TenantsModule,
         TeamModule,
+        PointsModule,
+        ProgramModule,
+        CustomersModule,
+        RewardsModule,
       ],
       // Global guards run in this order: CSRF header → session → tenant membership/role.
       providers: [
