@@ -15,15 +15,25 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'mobile', use: { ...devices['Pixel 7'] } },
+    // Merchant flows are desktop-first; the phone run covers the public pages.
+    { name: 'mobile', use: { ...devices['Pixel 7'] }, testMatch: /home\.spec\.ts/ },
   ],
-  // Start the production build unless pointed at an already-running deployment.
+  // Start the production builds of the API and web app, unless pointed at a running deployment.
+  // Both read the repository's .env; infrastructure comes from docker compose.
   webServer: process.env.E2E_BASE_URL
     ? undefined
-    : {
-        command: 'pnpm start',
-        port: PORT,
-        reuseExistingServer: !process.env.CI,
-        timeout: 120_000,
-      },
+    : [
+        {
+          command: 'pnpm --filter @pointshub/api start',
+          url: 'http://localhost:4000/api/v1/health/live',
+          reuseExistingServer: !process.env.CI,
+          timeout: 120_000,
+        },
+        {
+          command: 'pnpm start',
+          port: PORT,
+          reuseExistingServer: !process.env.CI,
+          timeout: 120_000,
+        },
+      ],
 });
