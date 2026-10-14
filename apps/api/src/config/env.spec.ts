@@ -15,13 +15,20 @@ describe('loadEnv', () => {
       LOG_LEVEL: 'info',
       ACCESS_TOKEN_TTL_SECONDS: 900,
       COOKIE_SECURE: true,
+      TRUST_PROXY_HOPS: 0,
     });
   });
 
   it('coerces numbers and booleans', () => {
-    const env = loadEnv({ ...valid, API_PORT: '8080', COOKIE_SECURE: 'false' });
+    const env = loadEnv({
+      ...valid,
+      API_PORT: '8080',
+      COOKIE_SECURE: 'false',
+      TRUST_PROXY_HOPS: '1',
+    });
     expect(env.API_PORT).toBe(8080);
     expect(env.COOKIE_SECURE).toBe(false);
+    expect(env.TRUST_PROXY_HOPS).toBe(1);
   });
 
   it('rejects a short signing secret', () => {

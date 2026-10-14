@@ -8,6 +8,11 @@ export const EnvSchema = z
     REDIS_URL: z.url(),
     RABBITMQ_URL: z.url(),
     WEB_ORIGIN: z.url().default('http://localhost:3000'),
+    /**
+     * Reverse proxies in front of the API (the web app's /api rewrite counts as one). Client
+     * IPs for rate limits and the audit log are read from X-Forwarded-For this many hops back.
+     */
+    TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
     LOG_LEVEL: z
       .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
       .default('info'),

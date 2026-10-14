@@ -16,6 +16,7 @@ const BODY_LIMIT = '100kb';
 export function configureApp(app: NestExpressApplication, env: Env): void {
   app.useLogger(app.get(Logger));
   app.setGlobalPrefix(API_PREFIX);
+  if (env.TRUST_PROXY_HOPS > 0) app.set('trust proxy', env.TRUST_PROXY_HOPS);
   app.useBodyParser('json', { limit: BODY_LIMIT });
   app.useBodyParser('urlencoded', { limit: BODY_LIMIT, extended: false });
   app.use(helmet());
