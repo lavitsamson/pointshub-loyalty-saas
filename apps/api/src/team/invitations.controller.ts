@@ -18,6 +18,7 @@ import {
   CreateInvitationSchema,
   type CreateInvitationInput,
   type Invitation,
+  type InvitationPreview,
   type MeResponse,
   type Paginated,
   PaginationQuerySchema,
@@ -74,6 +75,13 @@ export class InvitationsController {
     @ReqMeta() meta: RequestMeta,
   ): Promise<void> {
     return this.invitations.revoke(tenant, invitationId, meta);
+  }
+
+  @Public()
+  @Get('invitations/:token')
+  @ApiOperation({ summary: 'Who the invitation is from and whether the invitee has an account' })
+  preview(@Param('token') token: string): Promise<InvitationPreview> {
+    return this.invitations.preview(token);
   }
 
   @Public()

@@ -72,3 +72,16 @@ export const InvitationSchema = z.object({
   createdAt: z.iso.datetime(),
 });
 export type Invitation = z.infer<typeof InvitationSchema>;
+
+/**
+ * What the holder of an invitation link may see before accepting: enough to show who
+ * invited them, and whether to ask for a new password or their existing one.
+ */
+export const InvitationPreviewSchema = z.object({
+  tenantName: z.string(),
+  email: z.string(),
+  role: InvitableRoleSchema,
+  hasAccount: z.boolean(),
+  expiresAt: z.iso.datetime(),
+});
+export type InvitationPreview = z.infer<typeof InvitationPreviewSchema>;

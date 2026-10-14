@@ -127,6 +127,39 @@ describe('Team and invitations', () => {
       await new ApiClient(t.app)
         .post('/invitations/forged.token.value/accept', { name: 'X', password: TEST_PASSWORD })
         .expect(410);
+      await new ApiClient(t.app).get('/invitations/forged.token.value').expect(410);
+    });
+
+    it('can be previewed by the link holder until it is used', async () => {
+      const owner = await registerOwner(t.app, 'Preview Bakery');
+      const other = await registerOwner(t.app);
+      const newcomer = uniqueEmail();
+      for (const email of [newcomer, other.email]) {
+        await owner.client
+          .post(`/tenants/${owner.tenantId}/invitations`, { email, role: 'STAFF' })
+          .expect(201);
+      }
+      const anonymous = new ApiClient(t.app);
+
+      const fresh = await anonymous
+        .get(`/invitations/${t.mailbox.tokenFor(newcomer, INVITE_LINK)}`)
+        .expect(200);
+      expect(fresh.body).toEqual({
+        tenantName: 'Preview Bakery',
+        email: newcomer,
+        role: 'STAFF',
+        hasAccount: false,
+        expiresAt: expect.any(String),
+      });
+
+      const existingToken = t.mailbox.tokenFor(other.email, INVITE_LINK);
+      const existing = await anonymous.get(`/invitations/${existingToken}`).expect(200);
+      expect(existing.body).toMatchObject({ email: other.email, hasAccount: true });
+
+      await anonymous
+        .post(`/invitations/${existingToken}/accept`, { password: TEST_PASSWORD })
+        .expect(200);
+      await anonymous.get(`/invitations/${existingToken}`).expect(410);
     });
   });
 

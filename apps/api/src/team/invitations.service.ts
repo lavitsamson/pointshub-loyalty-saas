@@ -10,6 +10,7 @@ import {
   canManageMember,
   type CreateInvitationInput,
   type Invitation,
+  type InvitationPreview,
   type Paginated,
   type PaginationQuery,
   PasswordSchema,
@@ -147,6 +148,20 @@ export class InvitationsService {
         meta,
       });
     });
+  }
+
+  /** Public endpoint: only someone holding the signed link can look the invitation up. */
+  async preview(token: string): Promise<InvitationPreview> {
+    const invitation = await this.findUsableInvitation(token);
+    const [tenant, user] = await Promise.all([
+      this.prisma.unscoped.tenant.findUniqueOrThrow({ where: { id: invitation.tenantId } }),
+      this.prisma.unscoped.user.findUnique({
+        where: { email: invitation.email },
+        select: { id: true },
+      }),
+    ]);
+    const { email, role, expiresAt } = toInvitation(invitation);
+    return { tenantName: tenant.name, email, role, expiresAt, hasAccount: user !== null };
   }
 
   /**
