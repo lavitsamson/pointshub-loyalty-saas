@@ -186,7 +186,7 @@ function FulfilByCode({ tenantId }: { tenantId: string }) {
           </Button>
         </form>
 
-        <div aria-live="polite">
+        <div role="region" aria-label="Code lookup result" aria-live="polite">
           {code && lookup.isPending && <LoadingRows rows={1} label="Looking up code" />}
           {lookup.isError && <Alert variant="destructive">{errorMessage(lookup.error)}</Alert>}
           {lookup.isSuccess && lookup.data === null && (

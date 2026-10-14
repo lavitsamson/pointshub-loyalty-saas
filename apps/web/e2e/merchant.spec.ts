@@ -47,7 +47,9 @@ test('a new business sets up its programme and serves a customer end to end', as
   await nav.getByRole('link', { name: 'Redemptions' }).click();
   await page.getByLabel('Redemption code').fill(code.toLowerCase());
   await page.getByRole('button', { name: 'Find' }).click();
-  await page.getByRole('button', { name: 'Fulfil', exact: true }).click();
+  // The pending list below has its own Fulfil buttons; act on the looked-up redemption only.
+  const lookup = page.getByRole('region', { name: 'Code lookup result' });
+  await lookup.getByRole('button', { name: 'Fulfil', exact: true }).click();
   await expect(page.getByText('Free flat white handed over', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Fulfilled', exact: true }).click();
   await expect(page.getByRole('cell', { name: code })).toBeVisible();
