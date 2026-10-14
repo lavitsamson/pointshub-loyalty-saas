@@ -31,7 +31,7 @@
 - [x] Audit log for admin mutations + list endpoint
 - [x] Seed: demo tenants, users, programme, tiers, campaign, rewards
 - [x] ADR 0002: authentication and sessions
-- [ ] Auth pages in the web app (part of milestone 4)
+- [x] Auth pages in the web app (built in milestone 4)
 
 ## 3. Core loyalty
 
@@ -51,9 +51,23 @@
 
 ## 4. Merchant UI
 
-- [ ] All dashboard pages
-- [ ] Customer table with bulk actions and export
-- [ ] Record-purchase flow
+- [x] Analytics endpoints (summary, daily, top rewards) for the dashboard
+- [x] Same-origin `/api/v1` proxy, API client with single-flight session refresh (ADR 0004)
+- [x] UI kit on Radix: accessible dialogs, menus and toasts; WCAG AA tokens; dark mode
+- [x] Auth pages: login (with demo logins), register, forgot/reset password, accept invitation
+- [x] Tenant switcher and app shell with role-aware navigation
+- [x] Dashboard: KPI cards, 30-day points chart (with table view), top rewards
+- [x] Customer table: search, tier/tag filters, sorting, cursor paging, cross-page selection,
+      bulk actions and CSV export
+- [x] Customer profile: balance, tier progress, ledger history, edit, adjust points, redeem
+- [x] Record-purchase flow with customer lookup, inline enrolment and idempotent submission
+- [x] Rewards, redemptions (fulfil by code), programme (business, earning rules, tiers,
+      campaigns), team and audit log pages
+- [x] Loading, empty and error states on every page
+- [x] Playwright: merchant journey (programme → customer → purchase → redeem → fulfil) and bulk
+      actions; the portal step joins in milestone 6
+- [x] ADR 0004: web app API access
+- Billing and "Ask your data" pages arrive with milestones 7 and 8.
 
 ## 5. Events & worker
 

@@ -10,11 +10,13 @@ regulars coming back.
 
 ## Features
 
-Planned for v1 (tracked in [docs/PROGRESS.md](docs/PROGRESS.md)):
+Built so far are the merchant dashboard and points engine; the rest is tracked in
+[docs/PROGRESS.md](docs/PROGRESS.md).
 
-- **Merchant dashboard** — KPIs, customer table with bulk actions and CSV export, a fast
-  record-purchase flow, rewards, redemptions, team management and an audit log.
-- **Points engine** — tier and campaign multipliers, FIFO expiry, an append-only ledger with a
+- **Merchant dashboard** ✅ — KPIs and a 30-day chart, customer table with search, filters, bulk
+  actions and CSV export, a fast record-purchase flow, rewards, fulfil-by-code redemptions,
+  programme settings, team management and an audit log. Responsive, keyboard-accessible, dark mode.
+- **Points engine** ✅ — tier and campaign multipliers, FIFO expiry, an append-only ledger with a
   tested balance invariant, idempotent purchases and overspend-proof redemptions.
 - **Customer portal** — balance, tier progress, rewards catalogue and redemption codes; mobile-first.
 - **Events** — transactional outbox → RabbitMQ → idempotent consumers for emails and daily stats.
@@ -38,17 +40,17 @@ More detail in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Tech stack
 
-| Area              | Choice                                                             |
-| ----------------- | ------------------------------------------------------------------ |
-| Monorepo          | pnpm workspaces, Turborepo                                         |
-| Language          | TypeScript (strict, `noUncheckedIndexedAccess`)                    |
-| Web               | Next.js (App Router), React, Tailwind CSS                          |
-| API / worker      | NestJS, zod validation, OpenAPI                                    |
-| Data              | PostgreSQL, Prisma                                                 |
-| Messaging / cache | RabbitMQ, Redis                                                    |
-| Observability     | pino structured logs with request ids, health and readiness probes |
-| Testing           | Jest, Supertest, Testcontainers, Playwright                        |
-| CI                | GitHub Actions                                                     |
+| Area              | Choice                                                                                         |
+| ----------------- | ---------------------------------------------------------------------------------------------- |
+| Monorepo          | pnpm workspaces, Turborepo                                                                     |
+| Language          | TypeScript (strict, `noUncheckedIndexedAccess`)                                                |
+| Web               | Next.js (App Router), React, Tailwind CSS, Radix UI, TanStack Query, react-hook-form, Recharts |
+| API / worker      | NestJS, zod validation, OpenAPI                                                                |
+| Data              | PostgreSQL, Prisma                                                                             |
+| Messaging / cache | RabbitMQ, Redis                                                                                |
+| Observability     | pino structured logs with request ids, health and readiness probes                             |
+| Testing           | Jest, Supertest, Testcontainers, Playwright                                                    |
+| CI                | GitHub Actions                                                                                 |
 
 ## Getting started
 
@@ -101,7 +103,10 @@ All demo accounts use the password `DemoPass123!`.
 - **Unit** tests sit next to the code (`*.spec.ts` / `*.test.ts`) and need no services.
 - **Integration** tests (`apps/api/test/*.int-spec.ts`) start throwaway containers, apply the
   real migrations and exercise the API through HTTP with the production middleware stack.
-- **End-to-end** tests (`apps/web/e2e`) drive the built web app in Chromium and a mobile viewport.
+- **End-to-end** tests (`apps/web/e2e`) start the built API and web app and drive them in Chromium
+  (plus a phone viewport for public pages): a new business sets up its programme, adds a customer,
+  records a purchase, redeems a reward and fulfils it by code; and a bulk-action flow. They need
+  `docker compose up -d` and `pnpm db:deploy` first.
 
 ## Design decisions
 
@@ -113,6 +118,10 @@ All demo accounts use the password `DemoPass123!`.
 - [ADR 0003 — Points ledger](docs/adr/0003-points-ledger.md): an append-only ledger (enforced by a
   trigger) with a cached balance updated under a row lock; idempotent purchases and exact decimal
   maths, proven by a 200-operation invariant test and concurrent-redemption tests.
+
+- [ADR 0004 — Web app API access](docs/adr/0004-web-app-api-access.md): the browser talks only to
+  the web origin, which forwards `/api/v1` to the API; session renewal is single-flight across
+  requests and tabs so rotating refresh tokens never trip reuse detection.
 
 Smaller decisions worth knowing:
 

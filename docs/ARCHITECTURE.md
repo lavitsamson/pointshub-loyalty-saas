@@ -23,7 +23,7 @@ flowchart LR
   STRIPE[Stripe]
   LLM[Anthropic API]
 
-  Web -->|HTTPS, httpOnly cookies| API
+  Web -->|/api/v1 proxied, httpOnly cookies| API
   API --> PG
   API --> R
   API -->|AI tools| LLM
@@ -38,14 +38,14 @@ flowchart LR
 
 ## Components
 
-| Component         | Responsibility                                                                                                                                 |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/web`        | Merchant dashboard and customer portal. Talks only to the API.                                                                                 |
-| `apps/api`        | REST API. Authentication, authorisation, tenant scoping, all writes. Writes domain events to the outbox in the same transaction as the change. |
-| `apps/worker`     | Background work: outbox relay → RabbitMQ, event consumers (notifications, daily stats), scheduled jobs (points expiry).                        |
-| `packages/shared` | zod schemas and types shared by API and web: request/response contracts, enums, event envelope, Problem Details.                               |
-| `packages/db`     | Prisma schema, migrations and the client factory.                                                                                              |
-| `packages/config` | Shared TypeScript, ESLint and Prettier configuration.                                                                                          |
+| Component         | Responsibility                                                                                                                                         |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `apps/web`        | Merchant dashboard and customer portal. Forwards `/api/v1` to the API so the browser stays on one origin ([ADR 0004](adr/0004-web-app-api-access.md)). |
+| `apps/api`        | REST API. Authentication, authorisation, tenant scoping, all writes. Writes domain events to the outbox in the same transaction as the change.         |
+| `apps/worker`     | Background work: outbox relay → RabbitMQ, event consumers (notifications, daily stats), scheduled jobs (points expiry).                                |
+| `packages/shared` | zod schemas and types shared by API and web: request/response contracts, enums, event envelope, Problem Details.                                       |
+| `packages/db`     | Prisma schema, migrations and the client factory.                                                                                                      |
+| `packages/config` | Shared TypeScript, ESLint and Prettier configuration.                                                                                                  |
 
 ## Key flows
 
@@ -74,6 +74,15 @@ sequenceDiagram
   MQ->>Stats: points.earned
   Stats->>DB: UPSERT DailyStats (idempotent via ProcessedEvent)
 ```
+
+### Web app data flow
+
+Pages under `/app` are client components. A session gate loads `/auth/me` and redirects to the
+login page when there is no session; the tenant layout resolves the membership for the business in
+the URL and exposes the member's role to the page. Data comes from TanStack Query hooks in
+`apps/web/src/lib/api`, keyed by tenant and area so a mutation can refresh exactly what it
+affected. The API client sends the CSRF header, renews an expired access token once (shared by
+concurrent requests and across tabs) and turns error bodies into typed Problem Details.
 
 ## Cross-cutting concerns
 
