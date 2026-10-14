@@ -124,6 +124,10 @@ const PROBES: Probe[] = [
   { method: 'get', route: `${T}/redemptions` },
   { method: 'post', route: `${T}/redemptions/{redemptionId}/fulfil` },
   { method: 'post', route: `${T}/redemptions/{redemptionId}/cancel` },
+
+  { method: 'get', route: `${T}/analytics/summary` },
+  { method: 'get', route: `${T}/analytics/daily` },
+  { method: 'get', route: `${T}/analytics/top-rewards` },
 ];
 
 function fill(route: string, ids: Ids): string {

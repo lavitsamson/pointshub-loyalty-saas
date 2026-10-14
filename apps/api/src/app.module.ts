@@ -2,6 +2,7 @@ import { type DynamicModule, Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { randomUUID } from 'node:crypto';
 import { LoggerModule } from 'nestjs-pino';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { AuditModule } from './audit/audit.module';
 import { AccessTokenGuard } from './auth/access-token.guard';
 import { AuthModule } from './auth/auth.module';
@@ -63,6 +64,7 @@ export class AppModule {
         ProgramModule,
         CustomersModule,
         RewardsModule,
+        AnalyticsModule,
       ],
       // Global guards run in this order: CSRF header → session → tenant membership/role.
       providers: [
