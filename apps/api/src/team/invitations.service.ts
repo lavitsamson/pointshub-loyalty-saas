@@ -7,6 +7,7 @@ import {
 import type { Invitation as InvitationRow } from '@pointshub/db';
 import {
   type AcceptInvitationInput,
+  canManageMember,
   type CreateInvitationInput,
   type Invitation,
   type Paginated,
@@ -23,7 +24,6 @@ import { afterCursor, NEWEST_FIRST, orderBy, toPage } from '../common/pagination
 import { RateLimiterService } from '../common/rate-limit/rate-limiter.service';
 import { PrismaService } from '../infra/prisma.service';
 import { MailService } from '../mail/mail.service';
-import { canManageMember } from '../tenancy/permissions';
 import type { TenantContext } from '../tenancy/tenant-context';
 
 const INVITATION_TTL_SECONDS = 7 * 24 * 60 * 60;

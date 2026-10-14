@@ -1,4 +1,4 @@
-import type { Role } from '@pointshub/shared';
+import type { Role } from './enums';
 import { can, canManageMember, Permission } from './permissions';
 
 // The table from the product spec, written out independently of the implementation.

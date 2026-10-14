@@ -6,11 +6,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { can, type Permission } from '@pointshub/shared';
 import type { Request } from 'express';
 import { z } from 'zod';
 import { PrismaService } from '../infra/prisma.service';
 import { REQUIRED_PERMISSION } from './decorators';
-import { can, type Permission } from './permissions';
 
 const UuidSchema = z.uuid();
 

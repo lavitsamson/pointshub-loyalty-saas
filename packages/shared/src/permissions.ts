@@ -1,6 +1,9 @@
-import type { Role } from '@pointshub/shared';
+import type { Role } from './enums';
 
-/** Everything a member can do inside a tenant. Checked by the tenant guard via @RequirePermission. */
+/**
+ * Everything a member can do inside a tenant. Enforced by the API's tenant guard; the web
+ * app reads the same matrix only to hide actions a role cannot take.
+ */
 export const Permission = {
   RecordPurchase: 'RECORD_PURCHASE',
   ViewCustomers: 'VIEW_CUSTOMERS',

@@ -21,6 +21,7 @@ import {
   type Paginated,
   PaginationQuerySchema,
   type PaginationQuery,
+  Permission,
   type Tier,
   UpdateCampaignSchema,
   type UpdateCampaignInput,
@@ -33,7 +34,6 @@ import { ReqMeta, type RequestMeta } from '../auth/decorators';
 import { ResourceIdPipe } from '../common/http/resource-id.pipe';
 import { ZodValidationPipe } from '../common/http/zod-validation.pipe';
 import { CurrentTenant, RequirePermission } from '../tenancy/decorators';
-import { Permission } from '../tenancy/permissions';
 import type { TenantContext } from '../tenancy/tenant-context';
 import { ProgramService } from './program.service';
 

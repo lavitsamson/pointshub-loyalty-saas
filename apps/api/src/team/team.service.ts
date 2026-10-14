@@ -1,11 +1,11 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { canManageMember } from '@pointshub/shared';
 import type { InvitableRole, Member, Paginated, PaginationQuery } from '@pointshub/shared';
 import { AuditService } from '../audit/audit.service';
 import type { RequestMeta } from '../auth/decorators';
 import { ProblemException } from '../common/http/problem.exception';
 import { afterCursor, NEWEST_FIRST, orderBy, toPage } from '../common/pagination/cursor';
 import { PrismaService } from '../infra/prisma.service';
-import { canManageMember } from '../tenancy/permissions';
 import type { TenantContext } from '../tenancy/tenant-context';
 
 const memberSelect = {

@@ -15,6 +15,7 @@ import {
   type Paginated,
   PaginationQuerySchema,
   type PaginationQuery,
+  Permission,
   UpdateMemberSchema,
   type UpdateMemberInput,
 } from '@pointshub/shared';
@@ -22,7 +23,6 @@ import { ReqMeta, type RequestMeta } from '../auth/decorators';
 import { ResourceIdPipe } from '../common/http/resource-id.pipe';
 import { ZodValidationPipe } from '../common/http/zod-validation.pipe';
 import { CurrentTenant, RequirePermission } from '../tenancy/decorators';
-import { Permission } from '../tenancy/permissions';
 import type { TenantContext } from '../tenancy/tenant-context';
 import { TeamService } from './team.service';
 

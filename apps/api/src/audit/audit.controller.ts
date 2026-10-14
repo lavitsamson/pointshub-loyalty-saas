@@ -5,11 +5,11 @@ import {
   type Paginated,
   PaginationQuerySchema,
   type PaginationQuery,
+  Permission,
 } from '@pointshub/shared';
 import { afterCursor, NEWEST_FIRST, orderBy, toPage } from '../common/pagination/cursor';
 import { ZodValidationPipe } from '../common/http/zod-validation.pipe';
 import { RequirePermission } from '../tenancy/decorators';
-import { Permission } from '../tenancy/permissions';
 import { AuditService } from './audit.service';
 
 @ApiTags('audit')

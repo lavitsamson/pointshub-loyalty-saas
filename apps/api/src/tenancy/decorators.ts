@@ -4,8 +4,8 @@ import {
   InternalServerErrorException,
   SetMetadata,
 } from '@nestjs/common';
+import type { Permission } from '@pointshub/shared';
 import type { Request } from 'express';
-import type { Permission } from './permissions';
 import type { TenantContext } from './tenant-context';
 
 export const REQUIRED_PERMISSION = 'tenancy:requiredPermission';
