@@ -13,7 +13,7 @@
 - [x] Worker skeleton (NestJS standalone application)
 - [x] Next.js skeleton (App Router, Tailwind)
 - [x] Tests: unit (Jest), integration (Testcontainers), e2e smoke (Playwright)
-- [x] GitHub Actions CI
+- [x] GitHub Actions CI (Node 24 actions; runner pinned to ubuntu-24.04 so image upgrades are deliberate)
 - [x] README skeleton, ARCHITECTURE.md, ADR 0001
 
 ## 2. Auth & tenancy
