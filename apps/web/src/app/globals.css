@@ -1,28 +1,96 @@
 @import 'tailwindcss';
 
-@theme {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-}
+/* next-themes toggles a `dark` class on <html>. */
+@custom-variant dark (&:where(.dark, .dark *));
 
+/*
+ * Design tokens. Every foreground/background pair below meets WCAG AA (4.5:1) for body text
+ * in both themes; muted text is checked against the card and page backgrounds. Chart colours
+ * are a separate pair per theme, checked for colour-blind separation against the card.
+ */
 :root {
-  --background: #ffffff;
+  --background: #f8fafc;
   --foreground: #0f172a;
-  --muted: #475569;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --muted: #f1f5f9;
+  --muted-foreground: #475569;
+  --border: #e2e8f0;
+  --input: #cbd5e1;
+  --ring: #4338ca;
   --primary: #4338ca;
   --primary-foreground: #ffffff;
+  --secondary: #e0e7ff;
+  --secondary-foreground: #312e81;
+  --destructive: #b91c1c;
+  --destructive-foreground: #ffffff;
+  --success: #15803d;
+  --success-foreground: #ffffff;
+  --warning: #92400e;
+  --chart-1: #4338ca;
+  --chart-2: #c2410c;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0b1020;
-    --foreground: #e2e8f0;
-    --muted: #94a3b8;
-    --primary: #818cf8;
-    --primary-foreground: #0b1020;
+.dark {
+  --background: #0b1020;
+  --foreground: #e2e8f0;
+  --card: #111827;
+  --card-foreground: #e2e8f0;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --border: #1f2937;
+  --input: #334155;
+  --ring: #a5b4fc;
+  --primary: #a5b4fc;
+  --primary-foreground: #1e1b4b;
+  --secondary: #1e1b4b;
+  --secondary-foreground: #c7d2fe;
+  --destructive: #f87171;
+  --destructive-foreground: #1f0a0a;
+  --success: #4ade80;
+  --success-foreground: #052e16;
+  --warning: #fbbf24;
+  --chart-1: #6366f1;
+  --chart-2: #ea580c;
+}
+
+@theme inline {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
   }
-}
 
-body {
-  background: var(--background);
-  color: var(--foreground);
+  body {
+    background: var(--background);
+    color: var(--foreground);
+  }
+
+  /* One visible focus style for every interactive element. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
 }

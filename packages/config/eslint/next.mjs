@@ -18,6 +18,11 @@ export function nextConfig({ tsconfigRootDir }) {
         ...nextPlugin.configs['core-web-vitals'].rules,
         ...reactHooks.configs.recommended.rules,
         'no-console': 'warn',
+        // Event handlers such as onSubmit={form.handleSubmit(save)} legitimately return promises.
+        '@typescript-eslint/no-misused-promises': [
+          'error',
+          { checksVoidReturn: { attributes: false } },
+        ],
       },
     },
   ];
