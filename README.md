@@ -10,7 +10,7 @@ regulars coming back.
 
 ## Features
 
-Built so far are the merchant dashboard and points engine; the rest is tracked in
+Built so far are the merchant dashboard, points engine and event pipeline; the rest is tracked in
 [docs/PROGRESS.md](docs/PROGRESS.md).
 
 - **Merchant dashboard** ✅ — KPIs and a 30-day chart, customer table with search, filters, bulk
@@ -19,7 +19,9 @@ Built so far are the merchant dashboard and points engine; the rest is tracked i
 - **Points engine** ✅ — tier and campaign multipliers, FIFO expiry, an append-only ledger with a
   tested balance invariant, idempotent purchases and overspend-proof redemptions.
 - **Customer portal** — balance, tier progress, rewards catalogue and redemption codes; mobile-first.
-- **Events** — transactional outbox → RabbitMQ → idempotent consumers for emails and daily stats.
+- **Events** ✅ — transactional outbox → RabbitMQ → idempotent consumers for customer emails
+  and live dashboard stats, with backoff retries and a dead-letter queue; nightly FIFO points
+  expiry and "points expiring in 7 days" emails.
 - **Billing** — Stripe Checkout, Billing Portal and verified, de-duplicated webhooks (test mode).
 - **Ask your data** — plain-language analytics backed by a fixed set of tenant-scoped tools; the
   model never writes SQL.
@@ -86,23 +88,26 @@ All demo accounts use the password `DemoPass123!`.
 
 ## Commands
 
-| Command           | What it does                                                                                      |
-| ----------------- | ------------------------------------------------------------------------------------------------- |
-| `pnpm dev`        | Runs web, API and worker in watch mode                                                            |
-| `pnpm build`      | Builds every package                                                                              |
-| `pnpm lint`       | ESLint across the workspace                                                                       |
-| `pnpm typecheck`  | `tsc --noEmit` across the workspace                                                               |
-| `pnpm test`       | Unit tests                                                                                        |
-| `pnpm test:int`   | API integration tests against real Postgres, Redis and RabbitMQ (Testcontainers; Docker required) |
-| `pnpm test:e2e`   | Playwright end-to-end tests                                                                       |
-| `pnpm db:migrate` | Creates/applies migrations in development                                                         |
-| `pnpm db:deploy`  | Applies committed migrations (CI, production)                                                     |
+| Command           | What it does                                                                                                 |
+| ----------------- | ------------------------------------------------------------------------------------------------------------ |
+| `pnpm dev`        | Runs web, API and worker in watch mode                                                                       |
+| `pnpm build`      | Builds every package                                                                                         |
+| `pnpm lint`       | ESLint across the workspace                                                                                  |
+| `pnpm typecheck`  | `tsc --noEmit` across the workspace                                                                          |
+| `pnpm test`       | Unit tests                                                                                                   |
+| `pnpm test:int`   | API and worker integration tests against real Postgres, Redis and RabbitMQ (Testcontainers; Docker required) |
+| `pnpm test:e2e`   | Playwright end-to-end tests                                                                                  |
+| `pnpm db:migrate` | Creates/applies migrations in development                                                                    |
+| `pnpm db:deploy`  | Applies committed migrations (CI, production)                                                                |
 
 ## Testing
 
 - **Unit** tests sit next to the code (`*.spec.ts` / `*.test.ts`) and need no services.
 - **Integration** tests (`apps/api/test/*.int-spec.ts`) start throwaway containers, apply the
-  real migrations and exercise the API through HTTP with the production middleware stack.
+  real migrations and exercise the API through HTTP with the production middleware stack. The
+  worker's (`apps/worker/test`) run the real relay and consumers against a real broker: outbox to
+  stats end to end, duplicate deliveries, retries into the dead-letter queue, concurrent relays,
+  and the expiry jobs.
 - **End-to-end** tests (`apps/web/e2e`) start the built API and web app and drive them in Chromium
   (plus a phone viewport for public pages): a new business sets up its programme, adds a customer,
   records a purchase, redeems a reward and fulfils it by code; and a bulk-action flow. They need
@@ -122,6 +127,9 @@ All demo accounts use the password `DemoPass123!`.
 - [ADR 0004 — Web app API access](docs/adr/0004-web-app-api-access.md): the browser talks only to
   the web origin, which forwards `/api/v1` to the API; session renewal is single-flight across
   requests and tabs so rotating refresh tokens never trip reuse detection.
+- [ADR 0005 — Transactional outbox](docs/adr/0005-transactional-outbox.md): events are written
+  in the same transaction as the change and relayed to RabbitMQ with `SKIP LOCKED`; consumers
+  deduplicate via `ProcessedEvent` and back off through retry queues into a dead-letter queue.
 
 Smaller decisions worth knowing:
 

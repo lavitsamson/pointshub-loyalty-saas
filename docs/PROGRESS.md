@@ -71,12 +71,15 @@
 
 ## 5. Events & worker
 
-- [ ] Outbox relay
-- [ ] RabbitMQ topology with DLQ
-- [ ] Notifications consumer
-- [ ] Stats consumer
-- [ ] Scheduled points expiry
-- [ ] ADR: transactional outbox
+- [x] Outbox relay (`FOR UPDATE SKIP LOCKED`, batches of 100, publisher confirms)
+- [x] RabbitMQ topology: queue per consumer, five backoff retry queues, dead-letter queue
+- [x] Consumer idempotency via `ProcessedEvent`, committed with the handler's writes
+- [x] Notifications consumer: tier reached, redemption fulfilled, points expiring in 7 days
+- [x] Stats consumer: live `DailyStats` for the dashboard
+- [x] Scheduled jobs behind a Redis lock: nightly FIFO points expiry, daily expiry warnings
+- [x] Tests: relay ordering and concurrency, end-to-end stats, duplicates, retries to the DLQ,
+      malformed messages, expiry invariant, once-a-day warnings
+- [x] ADR 0005: transactional outbox
 
 ## 6. Customer portal
 

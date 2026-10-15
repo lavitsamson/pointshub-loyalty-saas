@@ -38,14 +38,14 @@ flowchart LR
 
 ## Components
 
-| Component         | Responsibility                                                                                                                                         |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `apps/web`        | Merchant dashboard and customer portal. Forwards `/api/v1` to the API so the browser stays on one origin ([ADR 0004](adr/0004-web-app-api-access.md)). |
-| `apps/api`        | REST API. Authentication, authorisation, tenant scoping, all writes. Writes domain events to the outbox in the same transaction as the change.         |
-| `apps/worker`     | Background work: outbox relay → RabbitMQ, event consumers (notifications, daily stats), scheduled jobs (points expiry).                                |
-| `packages/shared` | zod schemas and types shared by API and web: request/response contracts, enums, event envelope, Problem Details.                                       |
-| `packages/db`     | Prisma schema, migrations and the client factory.                                                                                                      |
-| `packages/config` | Shared TypeScript, ESLint and Prettier configuration.                                                                                                  |
+| Component         | Responsibility                                                                                                                                                                             |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `apps/web`        | Merchant dashboard and customer portal. Forwards `/api/v1` to the API so the browser stays on one origin ([ADR 0004](adr/0004-web-app-api-access.md)).                                     |
+| `apps/api`        | REST API. Authentication, authorisation, tenant scoping, all writes. Writes domain events to the outbox in the same transaction as the change.                                             |
+| `apps/worker`     | Background work: outbox relay → RabbitMQ, event consumers (notifications, daily stats), scheduled jobs (points expiry, expiry warnings). See [ADR 0005](adr/0005-transactional-outbox.md). |
+| `packages/shared` | zod schemas and types shared by API and web: request/response contracts, enums, event envelope, Problem Details.                                                                           |
+| `packages/db`     | Prisma schema, migrations and the client factory.                                                                                                                                          |
+| `packages/config` | Shared TypeScript, ESLint and Prettier configuration.                                                                                                                                      |
 
 ## Key flows
 
@@ -74,6 +74,27 @@ sequenceDiagram
   MQ->>Stats: points.earned
   Stats->>DB: UPSERT DailyStats (idempotent via ProcessedEvent)
 ```
+
+### Events and the worker
+
+| Event                  | Raised by                         | Consumed by   |
+| ---------------------- | --------------------------------- | ------------- |
+| `customer.created`     | API: create customer              | stats         |
+| `points.earned`        | API: record purchase              | stats         |
+| `points.redeemed`      | API: redeem                       | stats         |
+| `redemption.cancelled` | API: cancel redemption            | stats         |
+| `tier.changed`         | API: earning crosses a tier       | notifications |
+| `redemption.fulfilled` | API: fulfil redemption            | notifications |
+| `points.expiring`      | Worker: daily scan, 09:00 UTC     | notifications |
+| `points.adjusted`      | API: adjustment, bulk adjust      | (none yet)    |
+| `points.expired`       | Worker: nightly expiry, 02:00 UTC | (none yet)    |
+
+Every event is an envelope `{ id, type, tenantId, occurredAt, version: 1, payload }` whose payload
+is validated against a zod contract in `packages/shared` when it is written and again when it is
+consumed. Each consumer has a queue `pointshub.<consumer>`, five holding queues for retries with
+backoff (1 s → 10 min) and a dead-letter queue `pointshub.<consumer>.dlq`; all are visible in
+the RabbitMQ management UI. Scheduled jobs take a Redis lock so that only one worker instance
+runs each occurrence.
 
 ### Web app data flow
 

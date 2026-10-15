@@ -8,3 +8,5 @@ the options considered, the decision and its consequences.
 | [0001](0001-multi-tenancy.md)               | Shared database with a `tenantId` column for multi-tenancy        | Accepted |
 | [0002](0002-authentication-and-sessions.md) | Cookie sessions with short-lived JWTs and rotating refresh tokens | Accepted |
 | [0003](0003-points-ledger.md)               | Append-only points ledger with a locked, cached balance           | Accepted |
+| [0004](0004-web-app-api-access.md)          | Web app reaches the API through a same-origin proxy               | Accepted |
+| [0005](0005-transactional-outbox.md)        | Transactional outbox with idempotent consumers                    | Accepted |
