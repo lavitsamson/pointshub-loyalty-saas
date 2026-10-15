@@ -2,6 +2,7 @@ import {
   calculatePointsEarned,
   type EarnInput,
   pointsDueToExpire,
+  pointsExpiringBetween,
   tierFor,
   toScaled,
 } from './points-rules';
@@ -140,5 +141,30 @@ describe('pointsDueToExpire (FIFO)', () => {
     const movements = [earn(30, null), earn(100, 10), debit(50)];
     // The 30 non-expiring points go first, then 20 from the expiring lot.
     expect(pointsDueToExpire(movements, day(30))).toBe(80);
+  });
+});
+
+describe('pointsExpiringBetween', () => {
+  const day = (n: number) => new Date(Date.UTC(2026, 0, n));
+  const earn = (points: number, expiresOn: number | null) => ({
+    points,
+    expiresAt: expiresOn === null ? null : day(expiresOn),
+  });
+  const debit = (points: number) => ({ points: -points, expiresAt: null });
+
+  it('counts unspent points in lots expiring inside the window', () => {
+    const movements = [earn(100, 10), earn(50, 12), earn(70, 20), debit(30)];
+    // Window [10, 13): the first lot (70 left after the debit) and the second (50).
+    expect(pointsExpiringBetween(movements, day(10), day(13))).toBe(120);
+  });
+
+  it('includes the start of the window and excludes the end', () => {
+    const movements = [earn(10, 10), earn(20, 11)];
+    expect(pointsExpiringBetween(movements, day(10), day(11))).toBe(10);
+  });
+
+  it('ignores spent lots and credits that never expire', () => {
+    const movements = [earn(40, 10), earn(25, null), debit(40)];
+    expect(pointsExpiringBetween(movements, day(1), day(30))).toBe(0);
   });
 });

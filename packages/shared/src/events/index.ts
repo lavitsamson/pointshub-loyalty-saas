@@ -8,6 +8,7 @@ export const EventTypeSchema = z.enum([
   'points.redeemed',
   'points.adjusted',
   'points.expired',
+  'points.expiring',
   'tier.changed',
   'redemption.fulfilled',
   'redemption.cancelled',
@@ -29,6 +30,12 @@ export const EventPayloadSchemas = {
   'points.redeemed': LedgerMovement.extend({ redemptionId: Id, rewardId: Id }),
   'points.adjusted': LedgerMovement.extend({ reason: z.string() }),
   'points.expired': LedgerMovement,
+  /** Raised by the worker's daily scan: unspent points that will expire on `expiresOn`. */
+  'points.expiring': z.object({
+    customerId: Id,
+    points: z.number().int().positive(),
+    expiresOn: z.iso.date(),
+  }),
   'tier.changed': z.object({
     customerId: Id,
     fromTierId: Id.nullable(),
@@ -59,3 +66,15 @@ export const EventEnvelopeSchema = z.object({
   payload: z.record(z.string(), z.unknown()),
 });
 export type EventEnvelope = z.infer<typeof EventEnvelopeSchema>;
+
+/** An envelope whose payload has been checked against the contract for its type. */
+export type DomainEvent = {
+  [T in EventType]: Omit<EventEnvelope, 'type' | 'payload'> & { type: T; payload: EventPayload<T> };
+}[EventType];
+
+/** Validates the envelope and then the payload for its type; throws a ZodError otherwise. */
+export function parseEvent(raw: unknown): DomainEvent {
+  const envelope = EventEnvelopeSchema.parse(raw);
+  const payload = EventPayloadSchemas[envelope.type].parse(envelope.payload);
+  return { ...envelope, payload } as DomainEvent;
+}

@@ -81,6 +81,27 @@ export interface LedgerMovement {
  * has passed is due to expire. Movements must be in chronological order.
  */
 export function pointsDueToExpire(movements: readonly LedgerMovement[], now: Date): number {
+  return openLots(movements)
+    .filter((lot) => lot.expiresAt !== null && lot.expiresAt <= now)
+    .reduce((sum, lot) => sum + lot.remaining, 0);
+}
+
+/**
+ * Unspent points in lots that expire at or after `from` and before `to`: what a customer
+ * stands to lose in that window if they do not spend first. Same FIFO rules as above.
+ */
+export function pointsExpiringBetween(
+  movements: readonly LedgerMovement[],
+  from: Date,
+  to: Date,
+): number {
+  return openLots(movements)
+    .filter((lot) => lot.expiresAt !== null && lot.expiresAt >= from && lot.expiresAt < to)
+    .reduce((sum, lot) => sum + lot.remaining, 0);
+}
+
+/** Credits with whatever is left of them after FIFO debits; fully spent lots included. */
+function openLots(movements: readonly LedgerMovement[]) {
   const lots: Array<{ remaining: number; expiresAt: Date | null }> = [];
 
   for (const movement of movements) {
@@ -96,10 +117,7 @@ export function pointsDueToExpire(movements: readonly LedgerMovement[], now: Dat
       debit -= taken;
     }
   }
-
-  return lots
-    .filter((lot) => lot.expiresAt !== null && lot.expiresAt <= now)
-    .reduce((sum, lot) => sum + lot.remaining, 0);
+  return lots;
 }
 
 /** Calendar months in UTC; the 31st rolls back to the last day of shorter months. */
