@@ -135,8 +135,9 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     res = await send(path, options);
   }
   if (!res.ok) throw await toApiError(res);
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
+  // 204, and 202 for "accepted, check your email", have no body.
+  const text = await res.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
 export const api = {
