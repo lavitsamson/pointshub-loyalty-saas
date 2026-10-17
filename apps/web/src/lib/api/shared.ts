@@ -31,8 +31,17 @@ export function usePaginatedList<T>(
   path: string,
   params: Record<string, string | number | undefined> = {},
 ) {
+  return useCursorList<T>(keys.list(tenantId, area, params), path, params);
+}
+
+/** The same "Load more" list under any query key, e.g. for the customer portal. */
+export function useCursorList<T>(
+  baseKey: readonly unknown[],
+  path: string,
+  params: Record<string, string | number | undefined> = {},
+) {
   const result = useInfiniteQuery({
-    queryKey: [...keys.list(tenantId, area, params), path],
+    queryKey: [...baseKey, path],
     queryFn: ({ pageParam, signal }) =>
       api.get<Paginated<T>>(`${path}${query({ ...params, cursor: pageParam })}`, signal),
     initialPageParam: undefined as string | undefined,

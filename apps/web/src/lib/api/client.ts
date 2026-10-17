@@ -46,38 +46,51 @@ interface RequestOptions {
   signal?: AbortSignal | undefined;
 }
 
-// Requests that must not trigger a refresh: they are how a session is created or renewed.
-const SESSION_ENDPOINTS = /^\/auth\/(login|register|refresh|logout)$/;
+/**
+ * Merchant routes share one session; each business's customer portal (/portal/:slug/...) has
+ * its own. Returns the path prefix whose `/auth/refresh` renews the session for `path`.
+ */
+function sessionScope(path: string): string {
+  return /^\/portal\/[^/]+/.exec(path)?.[0] ?? '';
+}
 
-let refreshing: Promise<boolean> | null = null;
+// Requests that must not trigger a refresh: they are how a session is created or renewed.
+const SESSION_ENDPOINTS =
+  /^(\/portal\/[^/]+)?\/auth\/(login|register|refresh|logout|set-password)$/;
+
+const refreshing = new Map<string, Promise<boolean>>();
 
 /**
- * Renews the session once, however many requests hit a 401 at the same time. Refresh tokens
+ * Renews a session once, however many requests hit a 401 at the same time. Refresh tokens
  * rotate and the API treats reuse as theft (revoking the whole session), so two concurrent
  * refreshes with the same cookie would sign the user out. The Web Locks API extends the same
  * guarantee across browser tabs.
  */
-function refreshSession(): Promise<boolean> {
-  refreshing ??= (async () => {
-    const run = async () => {
-      const res = await fetch(`${API_BASE}/auth/refresh`, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-      });
-      return res.ok;
-    };
-    try {
-      return typeof navigator !== 'undefined' && 'locks' in navigator
-        ? await navigator.locks.request('pointshub-session-refresh', run)
-        : await run();
-    } catch {
-      return false;
-    } finally {
-      refreshing = null;
-    }
-  })();
-  return refreshing;
+function refreshSession(scope: string): Promise<boolean> {
+  let pending = refreshing.get(scope);
+  if (!pending) {
+    pending = (async () => {
+      const run = async () => {
+        const res = await fetch(`${API_BASE}${scope}/auth/refresh`, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
+        return res.ok;
+      };
+      try {
+        return typeof navigator !== 'undefined' && 'locks' in navigator
+          ? await navigator.locks.request(`pointshub-session-refresh${scope}`, run)
+          : await run();
+      } catch {
+        return false;
+      } finally {
+        refreshing.delete(scope);
+      }
+    })();
+    refreshing.set(scope, pending);
+  }
+  return pending;
 }
 
 async function send(path: string, options: RequestOptions): Promise<Response> {
@@ -114,7 +127,11 @@ async function toApiError(res: Response): Promise<ApiError> {
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   let res = await send(path, options);
 
-  if (res.status === 401 && !SESSION_ENDPOINTS.test(path) && (await refreshSession())) {
+  if (
+    res.status === 401 &&
+    !SESSION_ENDPOINTS.test(path) &&
+    (await refreshSession(sessionScope(path)))
+  ) {
     res = await send(path, options);
   }
   if (!res.ok) throw await toApiError(res);

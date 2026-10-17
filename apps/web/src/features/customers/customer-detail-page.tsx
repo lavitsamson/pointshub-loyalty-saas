@@ -1,11 +1,12 @@
 'use client';
 
-import { type Customer, type LedgerEntryType, Permission, type Tier } from '@pointshub/shared';
+import { type Customer, Permission } from '@pointshub/shared';
 import { ArrowLeft, Gift, Pencil, PlusCircle, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { PageHeader } from '@/components/app/page-header';
 import { useTenant } from '@/components/app/tenant-context';
+import { LEDGER_ENTRY_LABELS, TierProgress } from '@/components/loyalty/tier-progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,14 +27,6 @@ import { useDialogs } from '@/lib/hooks';
 import { cn } from '@/lib/utils';
 import { AdjustPointsDialog, EditCustomerDialog } from './customer-dialogs';
 import { RedeemDialog } from './redeem-dialog';
-
-const ENTRY_LABELS: Record<LedgerEntryType, string> = {
-  EARN: 'Purchase',
-  REDEEM: 'Redeemed',
-  EXPIRE: 'Expired',
-  ADJUST: 'Adjustment',
-  REVERSAL: 'Refund',
-};
 
 export function CustomerDetailPage() {
   const tenant = useTenant();
@@ -186,39 +179,6 @@ function CustomerDetail({ customer }: { customer: Customer }) {
   );
 }
 
-/** Progress from the current tier's threshold towards the next one (tiers never drop). */
-function TierProgress({ lifetime, tiers }: { lifetime: number; tiers: Tier[] }) {
-  const sorted = [...tiers].sort((a, b) => a.minLifetimePoints - b.minLifetimePoints);
-  const next = sorted.find((t) => t.minLifetimePoints > lifetime);
-  const current = sorted.filter((t) => t.minLifetimePoints <= lifetime).at(-1);
-
-  if (!next) {
-    return <p className="text-sm text-muted-foreground">Top tier reached.</p>;
-  }
-  const from = current?.minLifetimePoints ?? 0;
-  const percent = Math.round(((lifetime - from) / (next.minLifetimePoints - from)) * 100);
-  return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex justify-between text-xs text-muted-foreground">
-        <span>{current?.name ?? 'No tier'}</span>
-        <span>
-          {formatNumber(next.minLifetimePoints - lifetime)} to {next.name}
-        </span>
-      </div>
-      <div
-        role="progressbar"
-        aria-label={`Progress to ${next.name}`}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={percent}
-        className="h-2 rounded-full bg-muted"
-      >
-        <div className="h-2 rounded-full bg-primary" style={{ width: `${percent}%` }} />
-      </div>
-    </div>
-  );
-}
-
 function LedgerTable({ tenantId, customerId }: { tenantId: string; customerId: string }) {
   const ledger = useLedger(tenantId, customerId);
 
@@ -249,7 +209,7 @@ function LedgerTable({ tenantId, customerId }: { tenantId: string; customerId: s
                 {formatDateTime(entry.createdAt)}
               </TableCell>
               <TableCell>
-                <span className="font-medium">{ENTRY_LABELS[entry.type]}</span>
+                <span className="font-medium">{LEDGER_ENTRY_LABELS[entry.type]}</span>
                 {entry.reason && (
                   <span className="block text-xs text-muted-foreground">{entry.reason}</span>
                 )}

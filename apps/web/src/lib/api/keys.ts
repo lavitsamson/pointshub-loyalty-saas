@@ -12,7 +12,15 @@ export const keys = {
     ['tenants', tenantId, area, 'list', params] as const,
   item: (tenantId: string, area: Area, id: string) =>
     ['tenants', tenantId, area, 'item', id] as const,
+
+  /** A customer portal: everything for one business's portal sits under ['portal', slug]. */
+  portal: (slug: string) => ['portal', slug] as const,
+  portalBusiness: (slug: string) => ['portal', slug, 'business'] as const,
+  portalMe: (slug: string) => ['portal', slug, 'me'] as const,
+  portalArea: (slug: string, area: PortalArea) => ['portal', slug, area] as const,
 };
+
+export type PortalArea = 'ledger' | 'rewards' | 'redemptions';
 
 export type Area =
   | 'program'
