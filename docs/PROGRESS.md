@@ -65,7 +65,7 @@
       campaigns), team and audit log pages
 - [x] Loading, empty and error states on every page
 - [x] Playwright: merchant journey (programme → customer → purchase → redeem → fulfil) and bulk
-      actions; the portal step joins in milestone 6
+      actions
 - [x] ADR 0004: web app API access
 - Billing and "Ask your data" pages arrive with milestones 7 and 8.
 
@@ -83,8 +83,19 @@
 
 ## 6. Customer portal
 
-- [ ] Portal auth
-- [ ] Portal pages
+- [x] Portal auth: customer audience with a business claim, cookies scoped to one portal's path,
+      rotating refresh tokens, login rate limiting
+- [x] Account claiming: registering with a known email sends a set-password link (also used for
+      forgotten passwords; single-use, one business only)
+- [x] Portal API: business details, balance and tier progress, points history, catalogue,
+      redeem, redemption history, all through the tenant-scoped services
+- [x] Portal pages at `/c/[tenantSlug]`: sign in, join, set/forgot password, home, rewards with
+      redeem-and-show-code, activity, my codes; mobile-first with loading, empty and error states
+- [x] Merchant side: "Customer portal" link in the navigation; demo portal link on the login page
+- [x] Tests: portal integration suite; portal isolation suite with route-coverage check
+- [x] Playwright: the merchant journey now has the customer join via the emailed link and redeem
+      in the portal; portal spec on desktop and phone
+- [x] ADR 0006: customer portal sessions
 
 ## 7. Billing
 

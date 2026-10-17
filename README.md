@@ -10,15 +10,18 @@ regulars coming back.
 
 ## Features
 
-Built so far are the merchant dashboard, points engine and event pipeline; the rest is tracked in
-[docs/PROGRESS.md](docs/PROGRESS.md).
+Built so far are the merchant dashboard, points engine, event pipeline and customer portal; the
+rest is tracked in [docs/PROGRESS.md](docs/PROGRESS.md).
 
 - **Merchant dashboard** ✅ — KPIs and a 30-day chart, customer table with search, filters, bulk
   actions and CSV export, a fast record-purchase flow, rewards, fulfil-by-code redemptions,
   programme settings, team management and an audit log. Responsive, keyboard-accessible, dark mode.
 - **Points engine** ✅ — tier and campaign multipliers, FIFO expiry, an append-only ledger with a
   tested balance invariant, idempotent purchases and overspend-proof redemptions.
-- **Customer portal** — balance, tier progress, rewards catalogue and redemption codes; mobile-first.
+- **Customer portal** ✅ — each business's own rewards page: join online or claim an account
+  made at the till via an emailed link, see balance, tier progress and history, redeem rewards
+  for a code to show at the counter. Mobile-first; sessions only work at the business that issued
+  them.
 - **Events** ✅ — transactional outbox → RabbitMQ → idempotent consumers for customer emails
   and live dashboard stats, with backoff retries and a dead-letter queue; nightly FIFO points
   expiry and "points expiring in 7 days" emails.
@@ -76,6 +79,10 @@ All demo accounts use the password `DemoPass123!`.
 | `staff@beanbrew.demo`    | Bean & Brew Café               | Staff |
 | `owner@studiobloom.demo` | Studio Bloom Salon (FREE plan) | Owner |
 
+The customer side is at http://localhost:3000/c/bean-and-brew: sign in as
+`customer@beanbrew.demo`, a Gold-tier regular with points to spend. Staff find their own
+business's portal link in the dashboard navigation ("Customer portal").
+
 `pnpm db:seed` recreates the demo businesses from scratch and can be re-run at any time.
 
 | Service                  | URL                                                |
@@ -109,9 +116,11 @@ All demo accounts use the password `DemoPass123!`.
   stats end to end, duplicate deliveries, retries into the dead-letter queue, concurrent relays,
   and the expiry jobs.
 - **End-to-end** tests (`apps/web/e2e`) start the built API and web app and drive them in Chromium
-  (plus a phone viewport for public pages): a new business sets up its programme, adds a customer,
-  records a purchase, redeems a reward and fulfils it by code; and a bulk-action flow. They need
-  `docker compose up -d` and `pnpm db:deploy` first.
+  (plus a phone viewport for public pages and the portal): a new business sets up its programme,
+  adds a customer and records a purchase; the customer claims their portal account through the
+  emailed link (read from Mailpit) and redeems a reward; staff fulfil it by code. There is also a
+  bulk-action flow and a portal sign-up flow. They need `docker compose up -d` and
+  `pnpm db:deploy` first.
 
 ## Design decisions
 
@@ -130,6 +139,9 @@ All demo accounts use the password `DemoPass123!`.
 - [ADR 0005 — Transactional outbox](docs/adr/0005-transactional-outbox.md): events are written
   in the same transaction as the change and relayed to RabbitMQ with `SKIP LOCKED`; consumers
   deduplicate via `ProcessedEvent` and back off through retry queues into a dead-letter queue.
+- [ADR 0006 — Customer portal sessions](docs/adr/0006-customer-portal-sessions.md): portal tokens
+  name their business and cookies are path-scoped to one portal; registering with a known email
+  sends a set-password link, so an account made at the till can only be claimed by its owner.
 
 Smaller decisions worth knowing:
 
