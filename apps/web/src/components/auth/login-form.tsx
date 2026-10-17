@@ -101,6 +101,12 @@ export function LoginForm() {
             </Button>
           ))}
         </div>
+        <p className="mt-3 text-muted-foreground">
+          Or see it as a customer:{' '}
+          <Link href="/c/bean-and-brew/login" className="font-medium text-primary hover:underline">
+            Bean &amp; Brew rewards portal
+          </Link>
+        </p>
       </div>
     </AuthCard>
   );

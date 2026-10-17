@@ -262,7 +262,7 @@ function PointsReasonFields({
         id="adj-reason"
         label="Reason"
         error={errors.reason?.message}
-        hint="Shown in the ledger and the audit log."
+        hint="Shown in the ledger, the audit log and the customer's own points history."
       >
         <Input
           autoComplete="off"

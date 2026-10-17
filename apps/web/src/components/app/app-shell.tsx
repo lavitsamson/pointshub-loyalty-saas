@@ -5,6 +5,7 @@ import {
   Check,
   ChevronsUpDown,
   ClipboardList,
+  ExternalLink,
   Gift,
   LayoutDashboard,
   LogOut,
@@ -100,6 +101,20 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             </li>
           );
         })}
+        <li className="mt-4 border-t pt-4">
+          {/* Where customers sign in; staff share this link with them. */}
+          <Link
+            href={`/c/${tenant.tenantSlug}`}
+            target="_blank"
+            rel="noopener"
+            onClick={onNavigate}
+            className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <ExternalLink className="size-4" aria-hidden />
+            Customer portal
+            <span className="sr-only">(opens in a new tab)</span>
+          </Link>
+        </li>
       </ul>
     </nav>
   );
