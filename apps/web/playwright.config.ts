@@ -15,8 +15,8 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    // Merchant flows are desktop-first; the phone run covers the public pages.
-    { name: 'mobile', use: { ...devices['Pixel 7'] }, testMatch: /home\.spec\.ts/ },
+    // Merchant flows are desktop-first; the phone run covers the public pages and the portal.
+    { name: 'mobile', use: { ...devices['Pixel 7'] }, testMatch: /(home|portal)\.spec\.ts/ },
   ],
   // Start the production builds of the API and web app, unless pointed at a running deployment.
   // Both read the repository's .env; infrastructure comes from docker compose.

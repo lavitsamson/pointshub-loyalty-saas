@@ -1,7 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { addCustomer, registerBusiness, uniqueEmail } from './support';
+import { addCustomer, emailLink, PASSWORD, registerBusiness, uniqueEmail } from './support';
 
-test('a new business sets up its programme and serves a customer end to end', async ({ page }) => {
+test('a new business sets up its programme and serves a customer end to end', async ({
+  page,
+  browser,
+  request,
+}) => {
   const { base } = await registerBusiness(page);
   const nav = page.getByRole('navigation', { name: 'Main' });
 
@@ -31,18 +35,38 @@ test('a new business sets up its programme and serves a customer end to end', as
   await page.getByRole('button', { name: 'Record purchase' }).click();
   await expect(page.getByText('+25 points for Casey Customer')).toBeVisible();
 
-  // Redeem at the counter from the customer's page.
-  await page.getByRole('link', { name: 'View customer' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Casey Customer' })).toBeVisible();
-  await page.getByRole('button', { name: 'Redeem reward' }).click();
-  const redeemDialog = page.getByRole('dialog', { name: 'Redeem a reward' });
-  await redeemDialog.getByRole('button', { name: 'Redeem', exact: true }).click();
-  const codeText = page.getByRole('dialog', { name: 'Reward redeemed' }).locator('.font-mono');
+  // The customer joins the shop's portal on their own device. They were enrolled at the till,
+  // so registering emails them a link to choose a password rather than signing them in.
+  const portalUrl = await nav.getByRole('link', { name: /Customer portal/ }).getAttribute('href');
+  const phone = await (await browser.newContext()).newPage();
+  await phone.goto(`${portalUrl}/register`);
+  await phone.getByLabel('Your name').fill('Casey Customer');
+  await phone.getByLabel('Email').fill(email);
+  await phone.getByLabel('Password').fill(PASSWORD);
+  await phone.getByRole('button', { name: 'Join' }).click();
+  await expect(phone.getByRole('heading', { name: 'Check your email' })).toBeVisible();
+
+  await phone.goto(await emailLink(request, email, /http\S+\/set-password\?token=\S+/));
+  await phone.getByLabel('New password').fill(PASSWORD);
+  await phone.getByLabel('Confirm password').fill(PASSWORD);
+  await phone.getByRole('button', { name: 'Save and sign in' }).click();
+  await expect(phone.getByRole('heading', { level: 1, name: 'Hi, Casey' })).toBeVisible();
+  await expect(phone.getByText('25', { exact: true })).toBeVisible();
+
+  // ...and redeems a reward, getting a code to show at the counter.
+  await phone
+    .getByRole('navigation', { name: 'Account' })
+    .getByRole('link', { name: 'Rewards' })
+    .click();
+  await phone.getByRole('button', { name: 'Redeem for Free flat white' }).click();
+  await phone
+    .getByRole('dialog', { name: 'Redeem Free flat white?' })
+    .getByRole('button', { name: 'Redeem', exact: true })
+    .click();
+  const codeText = phone.getByRole('dialog', { name: 'Your reward code' }).locator('.font-mono');
   const code = (await codeText.textContent())?.trim() ?? '';
   expect(code).toMatch(/^[A-Z0-9]{3}-[A-Z0-9]{3}$/);
-  await page.getByRole('button', { name: 'Done' }).click();
-  await expect(page.getByRole('cell', { name: /Redeemed/ })).toBeVisible();
-
+  await phone.getByRole('button', { name: 'Done' }).click();
   // Staff fulfil it by code.
   await nav.getByRole('link', { name: 'Redemptions' }).click();
   await page.getByLabel('Redemption code').fill(code.toLowerCase());
@@ -53,6 +77,10 @@ test('a new business sets up its programme and serves a customer end to end', as
   await expect(page.getByText('Free flat white handed over', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Fulfilled', exact: true }).click();
   await expect(page.getByRole('cell', { name: code })).toBeVisible();
+
+  // The customer sees it claimed.
+  await phone.getByRole('link', { name: 'My codes' }).click();
+  await expect(phone.getByText('Claimed', { exact: true })).toBeVisible();
 });
 
 test('signed-out visitors are sent to the login page and back', async ({ page }) => {

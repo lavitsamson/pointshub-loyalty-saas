@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { type APIRequestContext, expect, type Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 
 export const PASSWORD = 'correct horse battery staple';
@@ -26,4 +26,32 @@ export async function addCustomer(page: Page, base: string, name: string, email:
   await dialog.getByRole('button', { name: 'Add customer' }).click();
   await expect(dialog).toBeHidden();
   await expect(page.getByRole('link', { name })).toBeVisible();
+}
+
+const MAILPIT_URL = process.env.MAILPIT_URL ?? 'http://localhost:8025';
+
+/** Waits for an email to `to` (delivered to Mailpit) and returns the first link matching `pattern`. */
+export async function emailLink(
+  request: APIRequestContext,
+  to: string,
+  pattern: RegExp,
+): Promise<string> {
+  let link: string | undefined;
+  await expect
+    .poll(
+      async () => {
+        const search = await request.get(`${MAILPIT_URL}/api/v1/search`, {
+          params: { query: `to:"${to}"` },
+        });
+        const { messages } = (await search.json()) as { messages: Array<{ ID: string }> };
+        const latest = messages[0];
+        if (!latest) return undefined;
+        const message = await request.get(`${MAILPIT_URL}/api/v1/message/${latest.ID}`);
+        link = pattern.exec(((await message.json()) as { Text: string }).Text)?.[0];
+        return link;
+      },
+      { message: `an email with a link to ${to}` },
+    )
+    .toBeTruthy();
+  return link!;
 }
