@@ -23,7 +23,7 @@ import { PrismaService } from '../infra/prisma.service';
 import { OutboxService } from '../outbox/outbox.service';
 import { AdjustmentsService } from '../points/adjustments.service';
 import { toLedgerEntry } from '../points/ledger.mapper';
-import type { TenantContext } from '../tenancy/tenant-context';
+import type { TenantContext, TenantScope } from '../tenancy/tenant-context';
 import { CUSTOMER_KEYSETS, customerInclude, customerWhere, toCustomer } from './customer-query';
 
 const EXPORT_BATCH_SIZE = 1000;
@@ -67,22 +67,28 @@ export class CustomersService {
     return toCustomer(row);
   }
 
-  async create(ctx: TenantContext, input: CreateCustomerInput): Promise<Customer> {
+  /** Enrols a customer: from the dashboard, or self-service from the portal (with a password). */
+  async create(
+    scope: TenantScope,
+    input: CreateCustomerInput,
+    passwordHash: string | null = null,
+  ): Promise<Customer> {
     try {
       return await this.prisma.scoped.$transaction(async (tx) => {
         const tiers = await tx.tier.findMany();
         const row = await tx.customer.create({
           data: {
-            tenantId: ctx.tenantId,
+            tenantId: scope.tenantId,
             email: input.email,
             name: input.name,
             phone: input.phone ?? null,
             tags: [...new Set(input.tags)],
+            passwordHash,
             currentTierId: tierFor(tiers, 0)?.id ?? null,
           },
           include: customerInclude,
         });
-        await this.outbox.add(tx, ctx.tenantId, 'customer.created', { customerId: row.id });
+        await this.outbox.add(tx, scope.tenantId, 'customer.created', { customerId: row.id });
         return toCustomer(row);
       });
     } catch (error) {

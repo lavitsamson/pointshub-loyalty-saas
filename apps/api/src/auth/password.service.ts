@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import argon2 from 'argon2';
+import { sha256 } from '../common/crypto';
 
 /** OWASP-recommended argon2id baseline: 19 MiB memory, 2 iterations, 1 lane. */
 const HASH_OPTIONS = {
@@ -8,6 +9,15 @@ const HASH_OPTIONS = {
   timeCost: 2,
   parallelism: 1,
 } as const;
+
+/**
+ * A short digest of the current password hash (or of no password). Embedded in emailed
+ * password links, it makes them stop working once the password changes: single-use without
+ * storing the link.
+ */
+export function passwordFingerprint(passwordHash: string | null): string {
+  return sha256(passwordHash ?? '').slice(0, 16);
+}
 
 @Injectable()
 export class PasswordService {

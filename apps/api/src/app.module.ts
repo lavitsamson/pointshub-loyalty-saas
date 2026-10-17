@@ -14,6 +14,7 @@ import { HealthModule } from './health/health.module';
 import { InfraModule } from './infra/infra.module';
 import { MailModule } from './mail/mail.module';
 import { PointsModule } from './points/points.module';
+import { PortalModule } from './portal/portal.module';
 import { ProgramModule } from './program/program.module';
 import { RewardsModule } from './rewards/rewards.module';
 import { TeamModule } from './team/team.module';
@@ -65,6 +66,7 @@ export class AppModule {
         CustomersModule,
         RewardsModule,
         AnalyticsModule,
+        PortalModule,
       ],
       // Global guards run in this order: CSRF header → session → tenant membership/role.
       providers: [

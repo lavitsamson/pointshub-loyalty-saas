@@ -9,7 +9,8 @@ const ALGORITHM = 'HS256';
  * Every signed token names its purpose in the `aud` claim, so a token minted for one use
  * (e.g. a password reset) is rejected everywhere else (e.g. as an access token).
  */
-export type TokenAudience = 'merchant' | 'customer' | 'password-reset' | 'invitation';
+export type TokenAudience =
+  'merchant' | 'customer' | 'password-reset' | 'invitation' | 'customer-password';
 
 export class InvalidTokenError extends Error {
   override readonly name = 'InvalidTokenError';
@@ -23,8 +24,13 @@ export class TokenService {
     this.key = new TextEncoder().encode(env.JWT_SECRET);
   }
 
-  signAccessToken(subject: string, audience: 'merchant' | 'customer'): Promise<string> {
+  signAccessToken(subject: string, audience: 'merchant'): Promise<string> {
     return this.sign(audience, subject, {}, this.env.ACCESS_TOKEN_TTL_SECONDS);
+  }
+
+  /** Customers belong to one business; the token names it so no other portal accepts it. */
+  signCustomerAccessToken(customerId: string, tenantId: string): Promise<string> {
+    return this.sign('customer', customerId, { tid: tenantId }, this.env.ACCESS_TOKEN_TTL_SECONDS);
   }
 
   sign(

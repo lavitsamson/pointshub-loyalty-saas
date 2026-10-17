@@ -13,7 +13,7 @@ import { afterCursor, NEWEST_FIRST, orderBy, toPage } from '../common/pagination
 import { PrismaService } from '../infra/prisma.service';
 import { OutboxService } from '../outbox/outbox.service';
 import { LedgerService } from '../points/ledger.service';
-import type { TenantContext } from '../tenancy/tenant-context';
+import type { TenantContext, TenantScope } from '../tenancy/tenant-context';
 import type { ScopedTransaction } from '../tenancy/tenant-scope';
 import { generateRedemptionCode, normalizeRedemptionCode } from './redemption-code';
 
@@ -45,7 +45,11 @@ export class RedemptionsService {
     private readonly audit: AuditService,
   ) {}
 
-  async create(ctx: TenantContext, input: CreateRedemptionInput): Promise<Redemption> {
+  /** Staff redeem at the counter (userId set); customers redeem from the portal (no user). */
+  async create(
+    ctx: TenantScope & { userId?: string },
+    input: CreateRedemptionInput,
+  ): Promise<Redemption> {
     return this.prisma.scoped.$transaction(async (tx) => {
       const customer = await this.ledger.lockCustomer(tx, ctx.tenantId, input.customerId);
       const reward = await this.lockReward(tx, ctx.tenantId, input.rewardId);

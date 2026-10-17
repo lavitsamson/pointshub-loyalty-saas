@@ -13,7 +13,7 @@ describe('Tenant-scoped Prisma client (real database)', () => {
 
   // Prisma queries are lazy: they run when awaited, so the await must happen inside the context.
   const inTenant = <T>(tenantId: string, fn: () => PromiseLike<T>) =>
-    runInTenantContext({ tenantId, userId: randomUUID(), role: 'OWNER' }, async () => await fn());
+    runInTenantContext({ tenantId }, async () => await fn());
 
   beforeAll(async () => {
     base = createPrismaClient({ connectionString: testEnv().DATABASE_URL });
@@ -76,10 +76,7 @@ describe('Tenant-scoped Prisma client (real database)', () => {
   });
 
   it('fails closed when a query built inside the context is executed outside it', async () => {
-    const escaped = runInTenantContext(
-      { tenantId: tenantA, userId: randomUUID(), role: 'OWNER' },
-      () => scoped.tier.findMany(),
-    );
+    const escaped = runInTenantContext({ tenantId: tenantA }, () => scoped.tier.findMany());
     await expect(escaped).rejects.toThrow(TenantScopeError);
   });
 

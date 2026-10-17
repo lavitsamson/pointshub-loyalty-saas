@@ -1,14 +1,13 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import type { LoginInput, MeResponse, RegisterInput, ResetPasswordInput } from '@pointshub/shared';
 import { randomBytes } from 'node:crypto';
-import { sha256 } from '../common/crypto';
 import { ProblemException } from '../common/http/problem.exception';
 import { RateLimiterService } from '../common/rate-limit/rate-limiter.service';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../infra/prisma.service';
 import { MailService } from '../mail/mail.service';
 import type { RequestMeta } from './decorators';
-import { PasswordService } from './password.service';
+import { passwordFingerprint, PasswordService } from './password.service';
 import { RefreshTokenRejectedError, RefreshTokenService } from './refresh-token.service';
 import type { Session } from './session-cookies';
 import { InvalidTokenError, TokenService } from './token.service';
@@ -215,7 +214,7 @@ export class AuthService {
       where: { id: user.id },
       data: { passwordHash: await this.passwords.hash(input.password) },
     });
-    await this.refreshTokens.revokeAllForUser(user.id);
+    await this.refreshTokens.revokeAll({ userId: user.id });
   }
 
   private async availableSlug(businessName: string): Promise<string> {
@@ -243,8 +242,4 @@ export function slugify(name: string): string {
     .slice(0, 48)
     .replace(/-+$/, '');
   return slug || 'business';
-}
-
-function passwordFingerprint(passwordHash: string): string {
-  return sha256(passwordHash).slice(0, 16);
 }

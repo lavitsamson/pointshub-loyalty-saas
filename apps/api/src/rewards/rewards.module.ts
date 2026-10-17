@@ -6,5 +6,6 @@ import { RewardsService } from './rewards.service';
 @Module({
   controllers: [RewardsController],
   providers: [RewardsService, RedemptionsService],
+  exports: [RewardsService, RedemptionsService],
 })
 export class RewardsModule {}

@@ -76,10 +76,10 @@ export class RefreshTokenService {
     if (existing) await this.revokeFamily(existing.familyId);
   }
 
-  /** Signs a user out everywhere, e.g. after a password reset. */
-  async revokeAllForUser(userId: string): Promise<void> {
+  /** Signs a user or customer out everywhere, e.g. after a password reset. */
+  async revokeAll(owner: TokenOwner): Promise<void> {
     await this.prisma.unscoped.refreshToken.updateMany({
-      where: { userId, revokedAt: null },
+      where: { ...owner, revokedAt: null },
       data: { revokedAt: new Date() },
     });
   }

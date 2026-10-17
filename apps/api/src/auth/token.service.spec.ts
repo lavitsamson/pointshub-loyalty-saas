@@ -23,8 +23,15 @@ describe('TokenService', () => {
   });
 
   it('rejects a customer token on merchant routes', async () => {
-    const token = await tokens.signAccessToken('customer-1', 'customer');
+    const token = await tokens.signCustomerAccessToken('customer-1', 't-1');
     await expect(tokens.verify('merchant', token)).rejects.toThrow(InvalidTokenError);
+  });
+
+  it('names the business in a customer token', async () => {
+    const token = await tokens.signCustomerAccessToken('customer-1', 't-1');
+    const { subject, claims } = await tokens.verify('customer', token);
+    expect(subject).toBe('customer-1');
+    expect(claims.tid).toBe('t-1');
   });
 
   it('rejects a token signed with another key', async () => {
