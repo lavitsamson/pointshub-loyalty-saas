@@ -1,10 +1,11 @@
 import { expect, test } from '@playwright/test';
 import type { MeResponse } from '@pointshub/shared';
-import { PASSWORD, uniqueEmail } from './support';
+import { emailLink, PASSWORD, uniqueEmail } from './support';
 
 const csrf = { 'X-Requested-With': 'XMLHttpRequest' };
 
 test('a new customer joins a business from its portal', async ({ page, request }) => {
+  const email = uniqueEmail('member');
   // The business and its catalogue are set up through the API; this test is about the portal.
   const registered = await request.post('/api/v1/auth/register', {
     headers: csrf,
@@ -33,9 +34,14 @@ test('a new customer joins a business from its portal', async ({ page, request }
 
   await page.getByRole('link', { name: 'Join the rewards programme' }).click();
   await page.getByLabel('Your name').fill('Mia Member');
-  await page.getByLabel('Email').fill(uniqueEmail('member'));
-  await page.getByLabel('Password').fill(PASSWORD);
+  await page.getByLabel('Email').fill(email);
   await page.getByRole('button', { name: 'Join' }).click();
+  await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible();
+
+  await page.goto(await emailLink(request, email, /http\S+\/set-password\?token=\S+/));
+  await page.getByLabel('New password').fill(PASSWORD);
+  await page.getByLabel('Confirm password').fill(PASSWORD);
+  await page.getByRole('button', { name: 'Save and sign in' }).click();
 
   await expect(page.getByRole('heading', { level: 1, name: 'Hi, Mia' })).toBeVisible();
   await expect(page.getByText('500 to Silver')).toBeVisible();

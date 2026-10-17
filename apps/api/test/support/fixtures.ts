@@ -1,4 +1,4 @@
-import type { Customer, MeResponse, PortalRegisterResult, Reward } from '@pointshub/shared';
+import type { Customer, MeResponse, PortalMe, Reward } from '@pointshub/shared';
 import { randomUUID } from 'node:crypto';
 import { ApiClient, type Owner, TEST_PASSWORD, uniqueEmail } from './api-client';
 import type { TestApp } from './test-app';
@@ -45,7 +45,10 @@ export interface PortalCustomer {
   email: string;
 }
 
-/** A customer who joined the business's programme through its portal, signed in. */
+/**
+ * A customer who joined the business's programme through its portal: asked to join, followed
+ * the emailed link and chose a password. Returns them signed in.
+ */
 export async function joinPortal(
   t: TestApp,
   slug: string,
@@ -53,11 +56,12 @@ export async function joinPortal(
 ): Promise<PortalCustomer> {
   const client = new ApiClient(t.app);
   const base = `/portal/${slug}`;
+  await client.post(`${base}/auth/register`, { name: 'Portal Member', email }).expect(202);
+  const token = t.mailbox.tokenFor(email, PORTAL_PASSWORD_LINK);
   const res = await client
-    .post(`${base}/auth/register`, { name: 'Portal Member', email, password: TEST_PASSWORD })
-    .expect(201);
-  const me = (res.body as PortalRegisterResult & { status: 'SIGNED_IN' }).me;
-  return { client, base, customerId: me.customer.id, email };
+    .post(`${base}/auth/set-password`, { token, password: TEST_PASSWORD })
+    .expect(200);
+  return { client, base, customerId: (res.body as PortalMe).customer.id, email };
 }
 
 export async function createCustomer(

@@ -146,34 +146,30 @@ export function PortalLoginForm() {
 
 export function PortalRegisterForm() {
   const slug = usePortalSlug();
-  const router = useRouter();
   const business = usePortalBusiness(slug).data;
   const earnLine = useEarnLine();
   const register = usePortalRegister(slug);
   const form = useForm({
     resolver: zodResolver(PortalRegisterSchema),
-    defaultValues: { name: '', email: '', password: '' },
+    defaultValues: { name: '', email: '' },
   });
   const { errors } = form.formState;
 
   const submit = (input: PortalRegisterInput) =>
-    register.mutate(input, {
-      onSuccess: (result) => {
-        if (result.status === 'SIGNED_IN') router.replace(portalHref(slug));
-      },
-      onError: (error) => applyServerErrors(form, error),
-    });
+    register.mutate(input, { onError: (error) => applyServerErrors(form, error) });
 
-  if (register.data?.status === 'CHECK_EMAIL') {
+  // The same answer whether or not the address is already a member, so this page never
+  // reveals who is a customer. The emailed link finishes joining, or claims the account.
+  if (register.isSuccess) {
     return (
       <AuthCard
         title="Check your email"
         footer={<PortalLink page="login">Back to sign in</PortalLink>}
       >
         <p className="text-sm">
-          <strong>{register.variables?.email}</strong> is already part of {business?.name ?? 'this'}{' '}
-          rewards — perhaps you joined at the counter. We have emailed you a link to choose your
-          password. It expires in 60 minutes.
+          We have sent a link to <strong>{register.variables.email}</strong>. Open it to choose your
+          password and finish joining. If you already collect points with {business?.name ?? 'us'},
+          the same link sets up your existing account. It expires in 60 minutes.
         </p>
       </AuthCard>
     );
@@ -198,30 +194,26 @@ export function PortalRegisterForm() {
             {...form.register('name')}
           />
         </Field>
-        <Field id="email" label="Email" error={errors.email?.message}>
+        <Field
+          id="email"
+          label="Email"
+          error={errors.email?.message}
+          hint="We will email you a link to choose your password."
+        >
           <Input
             type="email"
             autoComplete="email"
-            {...describedBy('email', errors.email?.message)}
+            {...describedBy('email', errors.email?.message, true)}
             {...form.register('email')}
           />
         </Field>
-        <Field id="password" label="Password" error={errors.password?.message} hint={passwordHint}>
-          <Input
-            type="password"
-            autoComplete="new-password"
-            {...describedBy('password', errors.password?.message, true)}
-            {...form.register('password')}
-          />
-        </Field>
         <Button type="submit" disabled={register.isPending}>
-          {register.isPending ? 'Joining…' : 'Join'}
+          {register.isPending ? 'Sending…' : 'Join'}
         </Button>
       </form>
     </AuthCard>
   );
 }
-
 export function PortalForgotPasswordForm() {
   const slug = usePortalSlug();
   const forgot = usePortalForgotPassword(slug);

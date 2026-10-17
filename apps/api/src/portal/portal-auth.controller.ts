@@ -18,7 +18,6 @@ import {
   type LoginInput,
   type PortalBusiness,
   type PortalMe,
-  type PortalRegisterResult,
   PortalRegisterSchema,
   type PortalRegisterInput,
   PortalSetPasswordSchema,
@@ -56,22 +55,17 @@ export class PortalAuthController {
   }
 
   @Post('auth/register')
+  @HttpCode(HttpStatus.ACCEPTED)
   @ApiOperation({
-    summary: 'Join the programme (201, signed in), or get a set-password email (202) if known',
+    summary:
+      'Join the programme: emails a link to choose a password, whether or not the address is already a customer',
   })
   async register(
     @Portal() portal: PortalContext,
     @Body(new ZodValidationPipe(PortalRegisterSchema)) body: PortalRegisterInput,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<PortalRegisterResult> {
-    const result = await this.auth.register(portal, body);
-    if (result === 'CHECK_EMAIL') {
-      res.status(HttpStatus.ACCEPTED);
-      return { status: 'CHECK_EMAIL' };
-    }
-    return { status: 'SIGNED_IN', me: await this.signIn(portal, result.customerId, res) };
+  ): Promise<void> {
+    await this.auth.register(portal, body);
   }
-
   @Post('auth/login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Sign in to the portal; sets the portal session cookies' })

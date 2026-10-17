@@ -136,6 +136,19 @@ describe('Portal isolation', () => {
     await raw('post', `/api/v1/portal/${victimSlug}/auth/refresh`, stolen).expect(401);
   });
 
+  it("does not accept one business's join link at another", async () => {
+    const email = `joiner-${randomUUID().slice(0, 8)}@example.test`;
+    await new ApiClient(t.app)
+      .post(`/portal/${homeSlug}/auth/register`, { name: 'Joiner', email })
+      .expect(202);
+    const token = t.mailbox.tokenFor(email, PORTAL_PASSWORD_LINK);
+    await new ApiClient(t.app)
+      .post(`/portal/${victimSlug}/auth/set-password`, { token, password: TEST_PASSWORD })
+      .expect(400);
+    const created = await t.prisma.unscoped.customer.count({ where: { email } });
+    expect(created).toBe(0);
+  });
+
   it("does not accept one business's password link at another", async () => {
     await new ApiClient(t.app)
       .post(`/portal/${homeSlug}/auth/forgot-password`, { email: member.email })

@@ -8,14 +8,14 @@ import { InvalidTokenError, TokenService } from '../auth/token.service';
 import { INVALID_CREDENTIALS } from '../auth/auth.service';
 import { ProblemException } from '../common/http/problem.exception';
 import { RateLimiterService } from '../common/rate-limit/rate-limiter.service';
-import { CustomersService } from '../customers/customers.service';
+import { CustomersService, DUPLICATE_CUSTOMER } from '../customers/customers.service';
 import { PrismaService } from '../infra/prisma.service';
 import { MailService } from '../mail/mail.service';
 import type { PortalContext } from './portal-context';
 
 const LOGIN_ATTEMPTS_PER_MINUTE = 5;
 /**
- * Registration and reset requests can email an address, so they are limited per address
+ * Join and reset requests email an address, so they are limited per address
  * rather than per IP: customers often sign up on the shop's shared wifi.
  */
 const PASSWORD_EMAILS_PER_15_MIN = 5;
@@ -40,32 +40,23 @@ export class PortalAuthService {
   ) {}
 
   /**
-   * A new email joins the programme and is signed in straight away. An email the business
-   * already has is never signed in from here — that would hand an in-store customer's points
-   * to whoever typed their address. Instead the address is sent a set-password link.
+   * Answers every request the same way, so it cannot be used to discover who is a customer:
+   * the address is emailed a link to choose a password. A new address becomes a customer only
+   * when that link is used. An address the business already has is never signed in from here
+   * either; that would hand an in-store customer's points to whoever typed their address.
    */
-  async register(
-    portal: PortalContext,
-    input: PortalRegisterInput,
-  ): Promise<{ customerId: string } | 'CHECK_EMAIL'> {
+  async register(portal: PortalContext, input: PortalRegisterInput): Promise<void> {
     await this.limitPasswordEmails(portal, input.email);
 
     const existing = await this.prisma.scoped.customer.findUnique({
       where: { tenantId_email: { tenantId: portal.tenantId, email: input.email } },
     });
     if (existing) {
-      await this.emailPasswordLink(portal, existing, 'register');
-      return 'CHECK_EMAIL';
+      await this.emailPasswordLink(portal, existing, 'claim');
+    } else {
+      await this.emailJoinLink(portal, input);
     }
-
-    const customer = await this.customers.create(
-      portal,
-      { name: input.name, email: input.email, tags: [] },
-      await this.passwords.hash(input.password),
-    );
-    return { customerId: customer.id };
   }
-
   async login(
     portal: PortalContext,
     input: LoginInput,
@@ -135,49 +126,75 @@ export class PortalAuthService {
   }
 
   /**
-   * Sets the password from an emailed link and signs the customer in: following the link
-   * proves they own the address. The link names the business and a fingerprint of the
-   * password it was issued against, so it works once and only in this portal.
+   * Completes an emailed link and signs the customer in: following the link proves they own
+   * the address. Links name the business, so they only work in its portal, and work once:
+   * - a join link creates the customer, so it fails once the address is a customer;
+   * - a password link carries a fingerprint of the password it was issued against, so it
+   *   fails once the password changes.
    */
   async setPassword(
     portal: PortalContext,
     input: PortalSetPasswordInput,
   ): Promise<{ customerId: string }> {
-    const invalid = () =>
-      new ProblemException({
-        type: '/problems/invalid-password-link',
-        title: 'Invalid or expired link',
-        status: 400,
-        detail: 'Request a new link from the sign-in page.',
-      });
-
-    let customerId: string;
+    let subject: string;
     let claims: Record<string, unknown>;
     try {
-      ({ subject: customerId, claims } = await this.tokens.verify(
-        'customer-password',
-        input.token,
-      ));
+      ({ subject, claims } = await this.tokens.verify('customer-password', input.token));
     } catch (error) {
-      if (error instanceof InvalidTokenError) throw invalid();
+      if (error instanceof InvalidTokenError) throw invalidLink();
       throw error;
     }
-    if (claims.tid !== portal.tenantId) throw invalid();
+    if (claims.tid !== portal.tenantId) throw invalidLink();
 
+    const passwordHash = await this.passwords.hash(input.password);
+    return claims.act === 'join'
+      ? this.completeJoin(portal, subject, claims, passwordHash)
+      : this.completePasswordChange(subject, claims, passwordHash);
+  }
+
+  private async completeJoin(
+    portal: PortalContext,
+    email: string,
+    claims: Record<string, unknown>,
+    passwordHash: string,
+  ): Promise<{ customerId: string }> {
+    if (typeof claims.name !== 'string') throw invalidLink();
+    try {
+      const customer = await this.customers.create(
+        portal,
+        { name: claims.name, email, tags: [] },
+        passwordHash,
+      );
+      return { customerId: customer.id };
+    } catch (error) {
+      // The address became a customer since the link was sent: used twice, or enrolled in store.
+      if (error instanceof ProblemException && error.problem.type === DUPLICATE_CUSTOMER) {
+        throw invalidLink();
+      }
+      throw error;
+    }
+  }
+
+  private async completePasswordChange(
+    customerId: string,
+    claims: Record<string, unknown>,
+    passwordHash: string,
+  ): Promise<{ customerId: string }> {
     const customer = await this.prisma.scoped.customer.findUnique({ where: { id: customerId } });
-    if (!customer || passwordFingerprint(customer.passwordHash) !== claims.pwd) throw invalid();
+    if (!customer || passwordFingerprint(customer.passwordHash) !== claims.pwd) {
+      throw invalidLink();
+    }
 
-    // Conditional on the fingerprint still matching, so two uses of one link cannot both win.
+    // Conditional on the old hash, so two uses of one link cannot both win.
     const updated = await this.prisma.scoped.customer.updateMany({
       where: { id: customer.id, passwordHash: customer.passwordHash },
-      data: { passwordHash: await this.passwords.hash(input.password) },
+      data: { passwordHash },
     });
-    if (updated.count === 0) throw invalid();
+    if (updated.count === 0) throw invalidLink();
 
     await this.refreshTokens.revokeAll({ customerId: customer.id });
     return { customerId: customer.id };
   }
-
   private limitPasswordEmails(portal: PortalContext, email: string): Promise<void> {
     return this.rateLimiter.enforce(
       `portal-password-email:${portal.tenantId}:${email}`,
@@ -186,19 +203,40 @@ export class PortalAuthService {
     );
   }
 
+  /** For an address the business already has: sets that customer's password. */
   private async emailPasswordLink(
     portal: PortalContext,
     customer: { id: string; email: string; passwordHash: string | null },
-    reason: 'register' | 'reset',
+    reason: 'claim' | 'reset',
   ): Promise<void> {
     const token = await this.tokens.sign(
       'customer-password',
       customer.id,
-      { tid: portal.tenantId, pwd: passwordFingerprint(customer.passwordHash) },
+      { tid: portal.tenantId, act: 'set', pwd: passwordFingerprint(customer.passwordHash) },
       PASSWORD_LINK_TTL_SECONDS,
     );
+    await this.sendLink(portal, customer.email, token, reason);
+  }
+
+  /** For a new address: the customer is created when the link is used, not before. */
+  private async emailJoinLink(portal: PortalContext, input: PortalRegisterInput): Promise<void> {
+    const token = await this.tokens.sign(
+      'customer-password',
+      input.email,
+      { tid: portal.tenantId, act: 'join', name: input.name },
+      PASSWORD_LINK_TTL_SECONDS,
+    );
+    await this.sendLink(portal, input.email, token, 'join');
+  }
+
+  private async sendLink(
+    portal: PortalContext,
+    to: string,
+    token: string,
+    reason: 'join' | 'claim' | 'reset',
+  ): Promise<void> {
     try {
-      await this.mail.sendPortalPasswordLink(customer.email, {
+      await this.mail.sendPortalPasswordLink(to, {
         businessName: portal.tenantName,
         slug: portal.tenantSlug,
         token,
@@ -209,4 +247,13 @@ export class PortalAuthService {
       this.logger.error(`Portal password email failed: ${(error as Error).message}`);
     }
   }
+}
+
+function invalidLink(): ProblemException {
+  return new ProblemException({
+    type: '/problems/invalid-password-link',
+    title: 'Invalid or expired link',
+    status: 400,
+    detail: 'Request a new link from the sign-in page.',
+  });
 }

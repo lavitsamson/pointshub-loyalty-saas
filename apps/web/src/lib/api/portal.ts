@@ -8,7 +8,6 @@ import type {
   PortalMe,
   PortalRedemption,
   PortalRegisterInput,
-  PortalRegisterResult,
   PortalSetPasswordInput,
   Reward,
 } from '@pointshub/shared';
@@ -73,17 +72,12 @@ export const usePortalSetPassword = (slug: string) =>
     api.post<PortalMe>(`${portalPath(slug)}/auth/set-password`, input),
   );
 
-/** Either signs a new member in, or reports that a set-password email was sent. */
-export function usePortalRegister(slug: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
+/** Emails a link to choose a password; the customer is signed in when they use it. */
+export const usePortalRegister = (slug: string) =>
+  useMutation({
     mutationFn: (input: PortalRegisterInput) =>
-      api.post<PortalRegisterResult>(`${portalPath(slug)}/auth/register`, input),
-    onSuccess: (result) => {
-      if (result.status === 'SIGNED_IN') resetAccount(queryClient, slug, result.me);
-    },
+      api.post<void>(`${portalPath(slug)}/auth/register`, input),
   });
-}
 
 export function usePortalLogout(slug: string) {
   const queryClient = useQueryClient();

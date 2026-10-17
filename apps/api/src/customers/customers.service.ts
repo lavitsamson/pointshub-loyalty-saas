@@ -30,9 +30,11 @@ const EXPORT_BATCH_SIZE = 1000;
 /** A bulk adjustment of 500 customers takes a few seconds; the default 5 s limit is too tight. */
 const BULK_TRANSACTION_TIMEOUT_MS = 60_000;
 
+export const DUPLICATE_CUSTOMER = '/problems/duplicate-customer';
+
 const duplicateEmail = () =>
   new ProblemException({
-    type: '/problems/duplicate-customer',
+    type: DUPLICATE_CUSTOMER,
     title: 'Customer already exists',
     status: 409,
     detail: 'A customer with this email is already in your programme.',

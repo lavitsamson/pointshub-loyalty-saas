@@ -26,27 +26,41 @@ export class MailService {
   }
 
   /**
-   * A link to choose a portal password. Sent when a customer asks to reset theirs, and when
-   * someone registers with an email the business already has, which is how customers enrolled
-   * at the counter claim their account.
+   * A link to choose a portal password, which finishes whatever the customer started:
+   * - `join`: a new address joined the programme;
+   * - `claim`: an address the business already has joined (e.g. enrolled at the counter);
+   * - `reset`: a customer forgot their password.
    */
   sendPortalPasswordLink(
     to: string,
-    details: { businessName: string; slug: string; token: string; reason: 'register' | 'reset' },
+    details: {
+      businessName: string;
+      slug: string;
+      token: string;
+      reason: 'join' | 'claim' | 'reset';
+    },
   ): Promise<void> {
     const link = `${this.env.WEB_ORIGIN}/c/${details.slug}/set-password?token=${encodeURIComponent(details.token)}`;
-    const intro =
-      details.reason === 'register'
-        ? `You already have a ${details.businessName} rewards account. Choose a password to start using it online.`
-        : `Someone asked to reset the password for your ${details.businessName} rewards account.`;
+    const { businessName } = details;
+    const content = {
+      join: {
+        subject: `Finish joining ${businessName} rewards`,
+        intro: `Thanks for joining ${businessName} rewards. Choose a password to finish.`,
+      },
+      claim: {
+        subject: `Set up your ${businessName} rewards account`,
+        intro: `You already have a ${businessName} rewards account. Choose a password to start using it online.`,
+      },
+      reset: {
+        subject: `Reset your ${businessName} rewards password`,
+        intro: `Someone asked to reset the password for your ${businessName} rewards account.`,
+      },
+    }[details.reason];
     return this.transport.send({
       to,
-      subject:
-        details.reason === 'register'
-          ? `Set up your ${details.businessName} rewards account`
-          : `Reset your ${details.businessName} rewards password`,
+      subject: content.subject,
       text: [
-        intro,
+        content.intro,
         '',
         `Choose a password: ${link}`,
         '',

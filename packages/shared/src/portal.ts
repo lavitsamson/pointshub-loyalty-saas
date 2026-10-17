@@ -18,10 +18,16 @@ export const PortalBusinessSchema = z.object({
 });
 export type PortalBusiness = z.infer<typeof PortalBusinessSchema>;
 
+/**
+ * Joining asks for no password: every request is answered the same way, with an emailed link
+ * to choose one. For a new address the link finishes joining; for an address the business
+ * already has (enrolled at the counter, or joined before) it sets that account's password.
+ * Either way the response never reveals whether the address is already a customer, and only
+ * the owner of the address can complete it.
+ */
 export const PortalRegisterSchema = z.object({
   name: PersonNameSchema,
   email: EmailSchema,
-  password: PasswordSchema,
 });
 export type PortalRegisterInput = z.infer<typeof PortalRegisterSchema>;
 
@@ -48,17 +54,6 @@ export const PortalMeSchema = z.object({
   tiers: z.array(PortalTierSchema),
 });
 export type PortalMe = z.infer<typeof PortalMeSchema>;
-
-/**
- * Registering with an email the business already knows (the customer was enrolled at the
- * counter, or registered before) does not sign anyone in: a set-password link is emailed
- * instead, so only the owner of the address can take over the account and its points.
- */
-export const PortalRegisterResultSchema = z.discriminatedUnion('status', [
-  z.object({ status: z.literal('SIGNED_IN'), me: PortalMeSchema }),
-  z.object({ status: z.literal('CHECK_EMAIL') }),
-]);
-export type PortalRegisterResult = z.infer<typeof PortalRegisterResultSchema>;
 
 /** A redemption as its customer sees it. */
 export const PortalRedemptionSchema = z.object({

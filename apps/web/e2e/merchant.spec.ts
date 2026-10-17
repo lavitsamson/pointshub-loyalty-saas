@@ -36,13 +36,12 @@ test('a new business sets up its programme and serves a customer end to end', as
   await expect(page.getByText('+25 points for Casey Customer')).toBeVisible();
 
   // The customer joins the shop's portal on their own device. They were enrolled at the till,
-  // so registering emails them a link to choose a password rather than signing them in.
+  // so the emailed link sets up that account, with the 25 points already on it.
   const portalUrl = await nav.getByRole('link', { name: /Customer portal/ }).getAttribute('href');
   const phone = await (await browser.newContext()).newPage();
   await phone.goto(`${portalUrl}/register`);
   await phone.getByLabel('Your name').fill('Casey Customer');
   await phone.getByLabel('Email').fill(email);
-  await phone.getByLabel('Password').fill(PASSWORD);
   await phone.getByRole('button', { name: 'Join' }).click();
   await expect(phone.getByRole('heading', { name: 'Check your email' })).toBeVisible();
 

@@ -59,14 +59,41 @@ describe('Customer portal', () => {
   });
 
   describe('registration', () => {
-    it('enrols a new customer, signs them in, and shows them to the business', async () => {
-      const email = uniqueEmail('new');
-      const res = await client()
-        .post(`${base}/auth/register`, { name: 'Nina New', email, password: TEST_PASSWORD })
-        .expect(201);
+    const join = (email: string, name = 'Someone') =>
+      client().post(`${base}/auth/register`, { name, email });
 
-      expect(res.body.status).toBe('SIGNED_IN');
-      const me = res.body.me as PortalMe;
+    it('answers a new address and a known one identically', async () => {
+      const known = await createCustomer(owner, { name: 'Known Customer' });
+      const fresh = uniqueEmail('fresh');
+
+      const [forKnown, forFresh] = [await join(known.email), await join(fresh)];
+      for (const res of [forKnown, forFresh]) {
+        expect(res.status).toBe(202);
+        expect(res.text).toBe('');
+        expect(cookiesOf(res)).toEqual([]);
+      }
+
+      // Both get an email; nothing else has happened yet.
+      expect(t.mailbox.lastTo(known.email).subject).toBe(
+        'Set up your Portal Bakery rewards account',
+      );
+      expect(t.mailbox.lastTo(fresh).subject).toBe('Finish joining Portal Bakery rewards');
+      const created = await t.prisma.unscoped.customer.count({
+        where: { tenantId: owner.tenantId, email: fresh },
+      });
+      expect(created).toBe(0);
+    });
+
+    it('creates the customer when the join link is used, and signs them in', async () => {
+      const email = uniqueEmail('new');
+      await join(email, 'Nina New').expect(202);
+      const token = t.mailbox.tokenFor(email, PORTAL_PASSWORD_LINK);
+
+      const nina = client();
+      const res = await nina
+        .post(`${base}/auth/set-password`, { token, password: TEST_PASSWORD })
+        .expect(200);
+      const me = res.body as PortalMe;
       expect(me).toMatchObject({
         customer: { name: 'Nina New', email },
         business: { name: 'Portal Bakery', slug },
@@ -81,52 +108,44 @@ describe('Customer portal', () => {
       expect(access).toContain(`Path=/api/v1/portal/${slug};`);
       expect(refresh).toContain(`Path=/api/v1/portal/${slug}/auth;`);
       expect(cookies.every((c) => c.includes('HttpOnly'))).toBe(true);
+      await nina.get(`${base}/me`).expect(200);
 
       const listed = await owner.client
         .get(`/tenants/${owner.tenantId}/customers?q=${encodeURIComponent(email)}`)
         .expect(200);
       expect(listed.body.data).toEqual([expect.objectContaining({ id: me.customer.id })]);
-
       const event = await t.prisma.unscoped.outboxEvent.findFirst({
         where: { tenantId: owner.tenantId, type: 'customer.created' },
         orderBy: { occurredAt: 'desc' },
       });
       expect(event?.payload).toMatchObject({ customerId: me.customer.id });
+
+      // The link works once.
+      await client()
+        .post(`${base}/auth/set-password`, { token, password: 'yet another password!' })
+        .expect(400);
     });
 
     it('lets a customer enrolled at the counter claim their account by email only', async () => {
       const enrolled = await createCustomer(owner, { name: 'Cora Counter' });
       await givePoints(owner, enrolled.id, 40);
 
-      // Someone registers with Cora's email: no session, and the password is not set.
-      const intruder = client();
-      const res = await intruder
-        .post(`${base}/auth/register`, {
-          name: 'Not Cora',
-          email: enrolled.email,
-          password: TEST_PASSWORD,
-        })
-        .expect(202);
-      expect(res.body).toEqual({ status: 'CHECK_EMAIL' });
-      expect(cookiesOf(res)).toEqual([]);
-      await intruder.get(`${base}/me`).expect(401);
-      await client()
-        .post(`${base}/auth/login`, { email: enrolled.email, password: TEST_PASSWORD })
-        .expect(401);
+      // Someone asks to join with Cora's email: nobody is signed in or given a password.
+      await join(enrolled.email, 'Not Cora').expect(202);
+      const stored = await t.prisma.unscoped.customer.findUniqueOrThrow({
+        where: { id: enrolled.id },
+      });
+      expect(stored).toMatchObject({ name: 'Cora Counter', passwordHash: null });
 
       // Cora follows the emailed link and is signed in to her existing account.
-      const mail = t.mailbox.lastTo(enrolled.email);
-      expect(mail.subject).toBe('Set up your Portal Bakery rewards account');
       const token = t.mailbox.tokenFor(enrolled.email, PORTAL_PASSWORD_LINK);
-      const cora = client();
-      const claimed = await cora
+      const claimed = await client()
         .post(`${base}/auth/set-password`, { token, password: NEW_PASSWORD })
         .expect(200);
       expect(claimed.body).toMatchObject({
         customer: { id: enrolled.id, name: 'Cora Counter' },
         pointsBalance: 40,
       });
-      await cora.get(`${base}/me`).expect(200);
 
       // The link works once.
       await client()
@@ -137,22 +156,31 @@ describe('Customer portal', () => {
         .expect(200);
     });
 
-    it('validates input', async () => {
+    it('voids a join link once the address is enrolled another way', async () => {
+      const email = uniqueEmail('late');
+      await join(email).expect(202);
+      const token = t.mailbox.tokenFor(email, PORTAL_PASSWORD_LINK);
+      await createCustomer(owner, { email });
+
       const res = await client()
-        .post(`${base}/auth/register`, { name: '', email: 'nope', password: 'short' })
+        .post(`${base}/auth/set-password`, { token, password: TEST_PASSWORD })
         .expect(400);
+      expect(res.body.type).toBe('/problems/invalid-password-link');
+    });
+
+    it('validates input', async () => {
+      const res = await join('nope', '').expect(400);
       const errors = (res.body as ProblemDetails).errors ?? [];
-      expect(errors.map((e) => e.path).sort()).toEqual(['email', 'name', 'password']);
+      expect(errors.map((e) => e.path).sort()).toEqual(['email', 'name']);
     });
 
     it('requires the CSRF header', async () => {
       await client()
         .agent.post(`/api/v1${base}/auth/register`)
-        .send({ name: 'X', email: uniqueEmail(), password: TEST_PASSWORD })
+        .send({ name: 'X', email: uniqueEmail() })
         .expect(403);
     });
   });
-
   describe('sessions', () => {
     it('signs in with the right password only', async () => {
       const member = await joinPortal(t, slug);
