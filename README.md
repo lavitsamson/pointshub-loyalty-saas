@@ -117,8 +117,8 @@ business's portal link in the dashboard navigation ("Customer portal").
   and the expiry jobs.
 - **End-to-end** tests (`apps/web/e2e`) start the built API and web app and drive them in Chromium
   (plus a phone viewport for public pages and the portal): a new business sets up its programme,
-  adds a customer and records a purchase; the customer claims their portal account through the
-  emailed link (read from Mailpit) and redeems a reward; staff fulfil it by code. There is also a
+  adds a customer and records a purchase; the customer joins the portal through the emailed link
+  (read from Mailpit) and redeems a reward; staff fulfil it by code. There is also a
   bulk-action flow and a portal sign-up flow. They need `docker compose up -d` and
   `pnpm db:deploy` first.
 
@@ -140,8 +140,9 @@ business's portal link in the dashboard navigation ("Customer portal").
   in the same transaction as the change and relayed to RabbitMQ with `SKIP LOCKED`; consumers
   deduplicate via `ProcessedEvent` and back off through retry queues into a dead-letter queue.
 - [ADR 0006 — Customer portal sessions](docs/adr/0006-customer-portal-sessions.md): portal tokens
-  name their business and cookies are path-scoped to one portal; registering with a known email
-  sends a set-password link, so an account made at the till can only be claimed by its owner.
+  name their business and cookies are path-scoped to one portal; joining always answers with an
+  emailed link, so the portal never reveals who is a customer and an account made at the till can
+  only be claimed by its owner.
 
 Smaller decisions worth knowing:
 

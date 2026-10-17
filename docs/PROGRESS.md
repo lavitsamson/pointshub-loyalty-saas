@@ -85,8 +85,9 @@
 
 - [x] Portal auth: customer audience with a business claim, cookies scoped to one portal's path,
       rotating refresh tokens, login rate limiting
-- [x] Account claiming: registering with a known email sends a set-password link (also used for
-      forgotten passwords; single-use, one business only)
+- [x] Joining by email link: every join request gets the same answer and an emailed link (new
+      address: finishes joining; known address: claims the account made at the till), so the portal
+      never reveals who is a customer; links are single-use and work at one business only
 - [x] Portal API: business details, balance and tier progress, points history, catalogue,
       redeem, redemption history, all through the tenant-scoped services
 - [x] Portal pages at `/c/[tenantSlug]`: sign in, join, set/forgot password, home, rewards with
@@ -95,6 +96,8 @@
 - [x] Tests: portal integration suite; portal isolation suite with route-coverage check
 - [x] Playwright: the merchant journey now has the customer join via the emailed link and redeem
       in the portal; portal spec on desktop and phone
+- [x] Fix: the web client accepted only 204 as an empty response, so forms answered with an empty
+      202 (forgot password, join) showed an error
 - [x] ADR 0006: customer portal sessions
 
 ## 7. Billing

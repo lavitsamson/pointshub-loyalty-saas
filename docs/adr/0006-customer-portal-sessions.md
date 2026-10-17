@@ -1,4 +1,4 @@
-# ADR 0006: Customer portal sessions scoped to one business, and claiming accounts by email
+# ADR 0006: Customer portal sessions scoped to one business, and joining by email link
 
 - **Status:** Accepted
 - **Date:** 2026-10-17
@@ -36,21 +36,32 @@ session. That only happens to a client that is misbehaving already.
 Prisma client and services as the dashboard (ADR 0001). The customer id only ever comes from the
 session, never from the request.
 
-**Registering with a known email does not sign anyone in.** `POST /auth/register`:
+**Joining answers every address the same way, and only the owner of an address can finish.**
+`POST /auth/register` takes a name and an email (no password) and always returns 202 with no
+body. It never signs anyone in. What it does depends on the address, but the response, cookies
+and work done are the same either way:
 
-- _new email_: creates the customer (with `customer.created` in the outbox) and signs them in (201);
-- _known email_ (enrolled at the till, or already registered): returns 202 `CHECK_EMAIL` and
-  emails a set-password link. Following the link proves ownership of the address, so
-  `POST /auth/set-password` sets the password and signs the customer in.
+- _new address_: emails a **join link**. The customer is created (with `customer.created` in the
+  outbox) only when the link is used.
+- _known address_ (enrolled at the till, or joined before): emails a **set-password link** for
+  that customer. This is how in-store customers claim their account and its points.
 
-The same link serves "forgot password". It is a JWT (`aud: customer-password`) naming the
-customer, the tenant and a fingerprint of the current password hash (or of no password). It works
-in one portal only, stops working once the password changes, and the update is conditional on
-the old hash, so two uses of one link cannot both succeed. Setting a password revokes the
-customer's other sessions.
+Both links open the same "choose your password" page. `POST /auth/set-password` sets the
+password and signs the customer in, since following the link proves they own the address. Both
+are JWTs (`aud: customer-password`) naming the business, so they only work in its portal, and
+both work once:
+
+- a join link names the address and the name given. It fails once that address is a customer,
+  whether the link was used already or staff enrolled them meanwhile.
+- a set-password link names the customer and a fingerprint of their current password hash (or of
+  no password). It fails once the password changes, and the update is conditional on the old
+  hash, so two uses cannot both succeed. Setting a password revokes the customer's other sessions.
+
+The set-password link also serves "forgot password", which likewise answers every address the
+same way.
 
 **Rate limits follow what is being protected.** Login: 5 per minute per business, IP and email.
-Registration and reset emails: 5 per 15 minutes per business and email address. That stops
+Join and reset emails: 5 per 15 minutes per business and email address. That stops
 someone flooding one person's inbox, without a per-IP limit that would block a queue of customers
 signing up on the shop's wifi.
 
@@ -60,20 +71,21 @@ signing up on the shop's wifi.
   anyone who knows a regular's email spend their points. Rejected.
 - **Staff invite customers to the portal.** That adds work at the till, and customers who join
   online would still need the same email proof.
-- **Return the same response for new and known emails** (always "check your email") to avoid
-  revealing who is a customer. That costs every new member a round trip to their inbox. The
-  merchant side already answers "email taken" on register; for a café's loyalty scheme, being a
-  customer is low-sensitivity, and forgot-password still never reveals it.
+- **Sign new addresses in straight away, and email only known ones.** Saves new members a trip
+  to their inbox, but the status code (and the slower password hash on one path) would tell
+  anyone whether an address is already a customer. It would also never check that a new member
+  owns the address they typed. Rejected in favour of the uniform answer.
 - **One cookie for all portals with the tenant id in the token only.** Secure because of `tid`,
   but the browser would send every portal session to every portal, and signing in to a second
   business would overwrite the first.
 
 ## Consequences
 
-- The portal isolation suite proves a session, refresh token and password link from one business
-  are rejected at another, and that another business's reward ids cannot be redeemed. Its
-  coverage check fails if a portal route is added without a probe.
+- The portal isolation suite proves a session, refresh token, join link and password link from
+  one business are rejected at another, and that another business's reward ids cannot be
+  redeemed. Its coverage check fails if a portal route is added without a probe.
 - The web client keys session renewal by scope (`/auth/refresh` or `/portal/<slug>/auth/refresh`),
   so a 401 in the portal never touches the merchant session, and vice versa.
-- Status codes reveal whether an email is already a customer of a business at registration.
-  This is accepted and recorded here.
+- Neither joining nor forgot-password reveals whether an address is a customer. The cost is that
+  every new member confirms their email before first use; the demo customer already has a
+  password, so the 30-second demo is unaffected.
