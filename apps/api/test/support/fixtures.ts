@@ -1,4 +1,4 @@
-import type { Customer, MeResponse, Reward } from '@pointshub/shared';
+import type { Customer, MeResponse, PortalRegisterResult, Reward } from '@pointshub/shared';
 import { randomUUID } from 'node:crypto';
 import { ApiClient, type Owner, TEST_PASSWORD, uniqueEmail } from './api-client';
 import type { TestApp } from './test-app';
@@ -27,6 +27,37 @@ export async function addMember(
     .post(`/invitations/${token}/accept`, { name: `New ${role}`, password: TEST_PASSWORD })
     .expect(200);
   return { client, email, userId: (res.body as MeResponse).user.id, token };
+}
+
+export const PORTAL_PASSWORD_LINK = /\/set-password\?token=([^\s]+)/;
+
+/** The owner's business slug: the address of its customer portal. */
+export async function businessSlug(owner: Owner): Promise<string> {
+  const res = await owner.client.get(`/tenants/${owner.tenantId}`).expect(200);
+  return (res.body as { slug: string }).slug;
+}
+
+export interface PortalCustomer {
+  client: ApiClient;
+  /** `/portal/<slug>`, to prefix portal paths with. */
+  base: string;
+  customerId: string;
+  email: string;
+}
+
+/** A customer who joined the business's programme through its portal, signed in. */
+export async function joinPortal(
+  t: TestApp,
+  slug: string,
+  email: string = uniqueEmail('member'),
+): Promise<PortalCustomer> {
+  const client = new ApiClient(t.app);
+  const base = `/portal/${slug}`;
+  const res = await client
+    .post(`${base}/auth/register`, { name: 'Portal Member', email, password: TEST_PASSWORD })
+    .expect(201);
+  const me = (res.body as PortalRegisterResult & { status: 'SIGNED_IN' }).me;
+  return { client, base, customerId: me.customer.id, email };
 }
 
 export async function createCustomer(
