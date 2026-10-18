@@ -67,7 +67,7 @@
 - [x] Playwright: merchant journey (programme → customer → purchase → redeem → fulfil) and bulk
       actions
 - [x] ADR 0004: web app API access
-- Billing and "Ask your data" pages arrive with milestones 7 and 8.
+- The billing page arrived with milestone 7; "Ask your data" is a proposed feature.
 
 ## 5. Events & worker
 
@@ -121,11 +121,7 @@
 
 ## 8. AI "Ask your data"
 
-- [ ] Provider interface + Anthropic provider
-- [ ] Tools
-- [ ] Mock provider
-- [ ] UI
-- [ ] Rate limits and token logging
+Deferred: moved to [Proposed features](#proposed-features) for a later release.
 
 ## 9. Hardening
 
@@ -140,3 +136,23 @@
 - [ ] `docs/DEPLOYMENT.md`
 - [ ] Deploy
 - [ ] Screenshots / GIF, final README polish
+
+## Proposed features
+
+Not scheduled; candidates for after the first release.
+
+### AI "Ask your data"
+
+Owners and admins ask questions about their business in plain language ("How many points did
+we issue last month?"); a Pro-plan feature.
+
+- [ ] `LlmProvider` interface with an Anthropic provider, and a deterministic `MockLlmProvider`
+      used in tests and whenever `ANTHROPIC_API_KEY` is unset
+- [ ] A fixed set of zod-validated tools over the tenant-scoped services (`getSummary`,
+      `getDailyStats`, `getTopRewards`, `getTierDistribution`, `getCustomersAtRisk`); the model
+      never writes SQL
+- [ ] Answers only from tool results, aggregate only (no customer names or emails), with the tool
+      calls shown under "How this was answered"
+- [ ] `/app/[tenantId]/ask` chat-style page; OWNER and ADMIN only; Pro plan only (402 on Free)
+- [ ] Rate limit of 20 questions per hour per business, capped max tokens, token usage logged
+- [ ] Prompt-injection threat and mitigations in `docs/SECURITY.md`

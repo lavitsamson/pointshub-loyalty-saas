@@ -28,8 +28,12 @@ billing; the rest is tracked in [docs/PROGRESS.md](docs/PROGRESS.md).
 - **Billing** ✅ — Free and Pro plans on Stripe (test mode): Checkout, the Billing Portal, and
   signature-verified webhooks applied exactly once and in the right order. The Free plan's
   100-customer limit is enforced under a lock, with an upgrade prompt in the dashboard.
-- **Ask your data** — plain-language analytics backed by a fixed set of tenant-scoped tools; the
-  model never writes SQL.
+
+### Proposed features
+
+- **Ask your data** — plain-language analytics for owners on the Pro plan, backed by a fixed
+  set of tenant-scoped tools so the model never writes SQL. Scoped in
+  [docs/PROGRESS.md](docs/PROGRESS.md#proposed-features); not built yet.
 
 ## Architecture
 

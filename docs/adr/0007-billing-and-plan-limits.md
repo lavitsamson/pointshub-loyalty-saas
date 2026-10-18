@@ -5,7 +5,7 @@
 
 ## Context
 
-Businesses start on the Free plan (up to 100 customers, no "Ask your data") and can upgrade
+Businesses start on the Free plan (up to 100 customers) and can upgrade
 to Pro with a Stripe subscription. Stripe owns the subscription; PointsHub only needs to know
 which plan each business is entitled to, and to enforce that plan's limits.
 
