@@ -1,5 +1,10 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import type { LoginInput, PortalRegisterInput, PortalSetPasswordInput } from '@pointshub/shared';
+import {
+  type LoginInput,
+  PLAN_LIMIT_PROBLEM,
+  type PortalRegisterInput,
+  type PortalSetPasswordInput,
+} from '@pointshub/shared';
 import type { RequestMeta } from '../auth/decorators';
 import { passwordFingerprint, PasswordService } from '../auth/password.service';
 import { RefreshTokenRejectedError, RefreshTokenService } from '../auth/refresh-token.service';
@@ -170,6 +175,15 @@ export class PortalAuthService {
       // The address became a customer since the link was sent: used twice, or enrolled in store.
       if (error instanceof ProblemException && error.problem.type === DUPLICATE_CUSTOMER) {
         throw invalidLink();
+      }
+      // The business's plan is full. The link stays valid, so it works once there is room.
+      if (error instanceof ProblemException && error.problem.type === PLAN_LIMIT_PROBLEM) {
+        throw new ProblemException({
+          ...error.problem,
+          title: 'Not taking new members online',
+          detail:
+            'This rewards programme is not taking new members online right now. Please ask in store.',
+        });
       }
       throw error;
     }

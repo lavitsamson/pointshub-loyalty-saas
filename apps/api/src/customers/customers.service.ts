@@ -15,6 +15,7 @@ import {
 } from '@pointshub/shared';
 import { AuditService } from '../audit/audit.service';
 import type { RequestMeta } from '../auth/decorators';
+import { assertRoomForCustomer } from '../billing/plan-limits';
 import { csvRow } from '../common/csv';
 import { ProblemException } from '../common/http/problem.exception';
 import { afterCursor, NEWEST_FIRST, orderBy, toPage } from '../common/pagination/cursor';
@@ -69,7 +70,10 @@ export class CustomersService {
     return toCustomer(row);
   }
 
-  /** Enrols a customer: from the dashboard, or self-service from the portal (with a password). */
+  /**
+   * Enrols a customer: from the dashboard, or self-service from the portal (with a password).
+   * Both paths are subject to the plan's customer limit (402).
+   */
   async create(
     scope: TenantScope,
     input: CreateCustomerInput,
@@ -77,6 +81,7 @@ export class CustomersService {
   ): Promise<Customer> {
     try {
       return await this.prisma.scoped.$transaction(async (tx) => {
+        await assertRoomForCustomer(tx, scope.tenantId);
         const tiers = await tx.tier.findMany();
         const row = await tx.customer.create({
           data: {

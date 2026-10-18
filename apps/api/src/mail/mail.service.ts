@@ -69,6 +69,21 @@ export class MailService {
     });
   }
 
+  /** Tells an owner that Stripe could not take the Pro payment. */
+  sendPaymentFailed(to: string, details: { tenantName: string; tenantId: string }): Promise<void> {
+    const link = `${this.env.WEB_ORIGIN}/app/${details.tenantId}/billing`;
+    return this.transport.send({
+      to,
+      subject: `Payment failed for ${details.tenantName} on PointsHub`,
+      text: [
+        `We could not take the payment for the Pro plan of ${details.tenantName}.`,
+        '',
+        'Pro stays on while the payment is retried. To keep it, update your payment details:',
+        link,
+      ].join('\n'),
+    });
+  }
+
   sendInvitation(
     to: string,
     details: { tenantName: string; inviterName: string; role: string; token: string },

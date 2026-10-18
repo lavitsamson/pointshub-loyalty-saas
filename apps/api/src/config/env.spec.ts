@@ -43,6 +43,36 @@ describe('loadEnv', () => {
     expect(loadEnv({ ...valid, JWT_SECRET: secret }).JWT_SECRET).toBe(secret);
   });
 
+  describe('Stripe settings', () => {
+    const stripe = {
+      STRIPE_SECRET_KEY: 'sk_test_123',
+      STRIPE_WEBHOOK_SECRET: 'whsec_123',
+      STRIPE_PRO_PRICE_ID: 'price_123',
+    };
+
+    it('are optional, and empty values count as unset', () => {
+      expect(loadEnv(valid).STRIPE_SECRET_KEY).toBeUndefined();
+      const blank = { STRIPE_SECRET_KEY: '', STRIPE_WEBHOOK_SECRET: '', STRIPE_PRO_PRICE_ID: '' };
+      expect(loadEnv({ ...valid, ...blank }).STRIPE_SECRET_KEY).toBeUndefined();
+    });
+
+    it('are accepted together', () => {
+      expect(loadEnv({ ...valid, ...stripe })).toMatchObject(stripe);
+    });
+
+    it('must be all set or none', () => {
+      expect(() => loadEnv({ ...valid, STRIPE_SECRET_KEY: 'sk_test_123' })).toThrow(
+        /set all of STRIPE_SECRET_KEY/,
+      );
+    });
+
+    it('refuse a live-mode key', () => {
+      expect(() => loadEnv({ ...valid, ...stripe, STRIPE_SECRET_KEY: 'sk_live_123' })).toThrow(
+        /test-mode key/,
+      );
+    });
+  });
+
   it('names every invalid variable in the error', () => {
     expect(() => loadEnv({ REDIS_URL: 'not a url' })).toThrow(
       /DATABASE_URL[\s\S]*REDIS_URL[\s\S]*RABBITMQ_URL/,

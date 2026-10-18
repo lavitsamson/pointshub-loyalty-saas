@@ -6,6 +6,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { AuditModule } from './audit/audit.module';
 import { AccessTokenGuard } from './auth/access-token.guard';
 import { AuthModule } from './auth/auth.module';
+import { BillingModule } from './billing/billing.module';
 import { CsrfGuard } from './common/http/csrf.guard';
 import { CustomersModule } from './customers/customers.module';
 import { ConfigModule } from './config/config.module';
@@ -67,6 +68,7 @@ export class AppModule {
         RewardsModule,
         AnalyticsModule,
         PortalModule,
+        BillingModule,
       ],
       // Global guards run in this order: CSRF header → session → tenant membership/role.
       providers: [

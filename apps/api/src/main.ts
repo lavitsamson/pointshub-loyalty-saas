@@ -17,6 +17,8 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule.register(env), {
     bufferLogs: true,
     bodyParser: false,
+    // Keeps req.rawBody next to the parsed body: Stripe signs the exact bytes it sent.
+    rawBody: true,
   });
   configureApp(app, env);
   await app.listen(env.API_PORT);

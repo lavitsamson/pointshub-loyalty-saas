@@ -1,6 +1,7 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../../src/app.module';
+import { BILLING_GATEWAY, type BillingGateway } from '../../src/billing/billing-gateway';
 import { configureApp } from '../../src/app.setup';
 import type { Env } from '../../src/config/env';
 import { PrismaService } from '../../src/infra/prisma.service';
@@ -42,17 +43,29 @@ export interface TestApp {
   close(): Promise<void>;
 }
 
+export interface TestAppOptions {
+  env?: Env;
+  /** Stands in for Stripe; without it billing is off, as when no Stripe keys are set. */
+  billingGateway?: BillingGateway;
+}
+
 /** Boots the full application, with the production middleware stack, against the test containers. */
-export async function createTestApp(env: Env = testEnv()): Promise<TestApp> {
+export async function createTestApp(options: TestAppOptions = {}): Promise<TestApp> {
+  const env = options.env ?? testEnv();
   const mailbox = new Mailbox();
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule.register(env)],
   })
     .overrideProvider(MAIL_TRANSPORT)
     .useValue(mailbox)
+    .overrideProvider(BILLING_GATEWAY)
+    .useValue(options.billingGateway ?? null)
     .compile();
 
-  const app = moduleRef.createNestApplication<NestExpressApplication>({ bodyParser: false });
+  const app = moduleRef.createNestApplication<NestExpressApplication>({
+    bodyParser: false,
+    rawBody: true,
+  });
   configureApp(app, env);
   await app.init();
 

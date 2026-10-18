@@ -1,5 +1,11 @@
 import { z } from 'zod';
 
+/** An optional variable where an empty value (`KEY=` in .env) means "not set". */
+const optional = (schema: z.ZodString) =>
+  z.preprocess((v) => (v === '' ? undefined : v), schema.optional());
+
+const STRIPE_VARS = ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_PRO_PRICE_ID'] as const;
+
 export const EnvSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -34,11 +40,28 @@ export const EnvSchema = z
     SMTP_HOST: z.string().min(1).default('localhost'),
     SMTP_PORT: z.coerce.number().int().positive().default(1025),
     MAIL_FROM: z.string().min(1).default('PointsHub <no-reply@pointshub.local>'),
+
+    /**
+     * Stripe, test mode only. All three or none: without them the billing endpoints answer
+     * 503 and every business stays on the plan it has.
+     */
+    STRIPE_SECRET_KEY: optional(
+      z.string().regex(/^(sk|rk)_test_/, 'must be a test-mode key (sk_test_... or rk_test_...)'),
+    ),
+    STRIPE_WEBHOOK_SECRET: optional(z.string().startsWith('whsec_')),
+    STRIPE_PRO_PRICE_ID: optional(z.string().startsWith('price_')),
   })
   .refine((env) => env.NODE_ENV !== 'production' || !env.JWT_SECRET.startsWith('change-me'), {
     path: ['JWT_SECRET'],
     message: 'JWT_SECRET still has the example value',
-  });
+  })
+  .refine(
+    (env) => {
+      const set = STRIPE_VARS.filter((key) => env[key] !== undefined).length;
+      return set === 0 || set === STRIPE_VARS.length;
+    },
+    { path: ['STRIPE_SECRET_KEY'], message: `set all of ${STRIPE_VARS.join(', ')} or none` },
+  );
 
 export type Env = z.infer<typeof EnvSchema>;
 

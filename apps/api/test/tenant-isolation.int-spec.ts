@@ -128,6 +128,10 @@ const PROBES: Probe[] = [
   { method: 'get', route: `${T}/analytics/summary` },
   { method: 'get', route: `${T}/analytics/daily` },
   { method: 'get', route: `${T}/analytics/top-rewards` },
+
+  { method: 'get', route: `${T}/billing` },
+  { method: 'post', route: `${T}/billing/checkout` },
+  { method: 'post', route: `${T}/billing/portal` },
 ];
 
 function fill(route: string, ids: Ids): string {
