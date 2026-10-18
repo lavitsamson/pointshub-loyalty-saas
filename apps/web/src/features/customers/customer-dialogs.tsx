@@ -10,6 +10,7 @@ import {
 } from '@pointshub/shared';
 import { type FieldErrors, useForm, type UseFormRegister } from 'react-hook-form';
 import { z } from 'zod';
+import { FormErrorWithUpgrade } from '@/components/app/upgrade-prompt';
 import { FormError } from '@/components/form-error';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogFooter } from '@/components/ui/dialog';
@@ -161,7 +162,7 @@ export function CreateCustomerDialog({
             }),
           )}
         >
-          <FormError error={create.error} />
+          <FormErrorWithUpgrade error={create.error} />
           <CustomerFields form={form} />
           <DialogFooter>
             <DialogClose asChild>

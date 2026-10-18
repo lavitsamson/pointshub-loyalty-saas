@@ -5,6 +5,7 @@ import {
   Check,
   ChevronsUpDown,
   ClipboardList,
+  CreditCard,
   ExternalLink,
   Gift,
   LayoutDashboard,
@@ -71,6 +72,7 @@ const NAV: NavItem[] = [
   { href: 'program', label: 'Programme', icon: Settings2, permission: Permission.ViewCustomers },
   { href: 'team', label: 'Team', icon: UsersRound, permission: Permission.ViewCustomers },
   { href: 'audit-log', label: 'Audit log', icon: ScrollText, permission: Permission.ViewAuditLog },
+  { href: 'billing', label: 'Billing', icon: CreditCard, permission: Permission.ManageBilling },
 ];
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {

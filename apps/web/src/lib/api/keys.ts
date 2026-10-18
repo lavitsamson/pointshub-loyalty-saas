@@ -32,4 +32,5 @@ export type Area =
   | 'analytics'
   | 'members'
   | 'invitations'
-  | 'audit';
+  | 'audit'
+  | 'billing';
