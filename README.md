@@ -10,8 +10,8 @@ regulars coming back.
 
 ## Features
 
-Built so far are the merchant dashboard, points engine, event pipeline and customer portal; the
-rest is tracked in [docs/PROGRESS.md](docs/PROGRESS.md).
+Built so far are the merchant dashboard, points engine, event pipeline, customer portal and
+billing; the rest is tracked in [docs/PROGRESS.md](docs/PROGRESS.md).
 
 - **Merchant dashboard** ✅ — KPIs and a 30-day chart, customer table with search, filters, bulk
   actions and CSV export, a fast record-purchase flow, rewards, fulfil-by-code redemptions,
@@ -25,7 +25,9 @@ rest is tracked in [docs/PROGRESS.md](docs/PROGRESS.md).
 - **Events** ✅ — transactional outbox → RabbitMQ → idempotent consumers for customer emails
   and live dashboard stats, with backoff retries and a dead-letter queue; nightly FIFO points
   expiry and "points expiring in 7 days" emails.
-- **Billing** — Stripe Checkout, Billing Portal and verified, de-duplicated webhooks (test mode).
+- **Billing** ✅ — Free and Pro plans on Stripe (test mode): Checkout, the Billing Portal, and
+  signature-verified webhooks applied exactly once and in the right order. The Free plan's
+  100-customer limit is enforced under a lock, with an upgrade prompt in the dashboard.
 - **Ask your data** — plain-language analytics backed by a fixed set of tenant-scoped tools; the
   model never writes SQL.
 
@@ -93,6 +95,27 @@ business's portal link in the dashboard navigation ("Customer portal").
 | RabbitMQ management      | http://localhost:15672 (`pointshub` / `pointshub`) |
 | Mailpit (captured email) | http://localhost:8025                              |
 
+### Billing (optional)
+
+Everything above works without Stripe: the billing page then says billing is not set up, and
+the demo businesses keep their seeded plans. To try upgrades with a
+[Stripe test account](https://dashboard.stripe.com/test):
+
+1. Create a product with a monthly recurring price, and enable the
+   [customer portal](https://dashboard.stripe.com/test/settings/billing/portal).
+2. Forward webhooks to the API (the
+   [Stripe CLI](https://docs.stripe.com/stripe-cli) prints a `whsec_...` signing secret):
+
+   ```bash
+   stripe listen --forward-to localhost:4000/api/v1/webhooks/stripe \
+     --events checkout.session.completed,customer.subscription.updated,customer.subscription.deleted,invoice.payment_failed
+   ```
+
+3. Set `STRIPE_SECRET_KEY` (`sk_test_...`), `STRIPE_WEBHOOK_SECRET` and `STRIPE_PRO_PRICE_ID`
+   in `.env`, and restart `pnpm dev`.
+4. Sign in as `owner@studiobloom.demo`, open **Billing** and upgrade with the test card
+   `4242 4242 4242 4242` (any future expiry, any CVC).
+
 ## Commands
 
 | Command           | What it does                                                                                                 |
@@ -118,8 +141,8 @@ business's portal link in the dashboard navigation ("Customer portal").
 - **End-to-end** tests (`apps/web/e2e`) start the built API and web app and drive them in Chromium
   (plus a phone viewport for public pages and the portal): a new business sets up its programme,
   adds a customer and records a purchase; the customer joins the portal through the emailed link
-  (read from Mailpit) and redeems a reward; staff fulfil it by code. There is also a
-  bulk-action flow and a portal sign-up flow. They need `docker compose up -d` and
+  (read from Mailpit) and redeems a reward; staff fulfil it by code. There are also
+  bulk-action, portal sign-up and billing-page flows. They need `docker compose up -d` and
   `pnpm db:deploy` first.
 
 ## Design decisions
@@ -143,6 +166,9 @@ business's portal link in the dashboard navigation ("Customer portal").
   name their business and cookies are path-scoped to one portal; joining always answers with an
   emailed link, so the portal never reveals who is a customer and an account made at the till can
   only be claimed by its owner.
+- [ADR 0007 — Billing and plan limits](docs/adr/0007-billing-and-plan-limits.md): only
+  signature-verified Stripe webhooks change a plan; each is recorded once and re-reads the
+  subscription under a tenant lock, so duplicates and out-of-order events cannot misapply.
 
 Smaller decisions worth knowing:
 

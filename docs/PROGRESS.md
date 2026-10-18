@@ -102,9 +102,22 @@
 
 ## 7. Billing
 
-- [ ] Stripe Checkout and Billing Portal
-- [ ] Webhooks with idempotency
-- [ ] Plan limits (402)
+- [x] Stripe Checkout and Billing Portal behind a `BillingGateway` interface; one Stripe
+      customer per business; test-mode keys only; billing optional per installation (503 without
+      keys)
+- [x] Webhooks: signature verified over the raw body; event ids recorded in the same transaction
+      as their effects (concurrent duplicates included); subscription re-read from Stripe under a
+      tenant lock so out-of-order events cannot misapply; plan changes audited; owners emailed when
+      a payment fails
+- [x] Plan limits: Free plan capped at 100 customers with a 402 Problem Details, enforced under a
+      tenant lock for dashboard, purchase-flow and portal enrolment; portal joiners get a
+      customer-facing message
+- [x] Billing page (owner only): plan, renewal/cancellation, usage meter, plan comparison,
+      upgrade and manage buttons, confirmation polling after Checkout; upgrade prompt on 402
+- [x] Tests: billing integration suite (checkout, portal, roles, webhooks, signatures,
+      duplicates, ordering, limits, concurrency), isolation probes for the new routes, env
+      validation, plan mapping; Playwright billing-page check
+- [x] ADR 0007: billing and plan limits
 
 ## 8. AI "Ask your data"
 
