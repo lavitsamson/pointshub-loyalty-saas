@@ -1,5 +1,6 @@
 export * from './analytics';
 export * from './auth';
+export * from './billing';
 export * from './enums';
 export * from './events';
 export * from './loyalty';
