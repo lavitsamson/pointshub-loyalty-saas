@@ -53,6 +53,9 @@ model Tenant {
   stripeSubscriptionId String?  @unique
   /// Mirrors the Stripe subscription status (active, past_due, canceled, ...).
   subscriptionStatus   String?
+  /// End of the paid period: the renewal date, or the last day of Pro once cancelled.
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean  @default(false)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
