@@ -4,12 +4,11 @@ import { type Plan, PlanSchema } from './enums';
 export interface PlanLimits {
   /** null = unlimited. */
   maxCustomers: number | null;
-  askAi: boolean;
 }
 
 export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
-  FREE: { maxCustomers: 100, askAi: false },
-  PRO: { maxCustomers: null, askAi: true },
+  FREE: { maxCustomers: 100 },
+  PRO: { maxCustomers: null },
 };
 
 /** Problem type of the 402 returned when an action needs a higher plan. */
@@ -40,7 +39,6 @@ export const BillingOverviewSchema = z.object({
     customers: z.number().int(),
     customerLimit: z.number().int().nullable(),
   }),
-  features: z.object({ askAi: z.boolean() }),
 });
 export type BillingOverview = z.infer<typeof BillingOverviewSchema>;
 

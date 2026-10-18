@@ -27,7 +27,6 @@ export class BillingService {
       this.findTenant(tenantId),
       this.prisma.scoped.customer.count(),
     ]);
-    const limits = PLAN_LIMITS[tenant.plan];
     return {
       plan: tenant.plan,
       subscriptionStatus: tenant.subscriptionStatus,
@@ -35,8 +34,7 @@ export class BillingService {
       cancelAtPeriodEnd: tenant.cancelAtPeriodEnd,
       hasBillingAccount: tenant.stripeCustomerId !== null,
       billingAvailable: this.gateway !== null,
-      usage: { customers, customerLimit: limits.maxCustomers },
-      features: { askAi: limits.askAi },
+      usage: { customers, customerLimit: PLAN_LIMITS[tenant.plan].maxCustomers },
     };
   }
 

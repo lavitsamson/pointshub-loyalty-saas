@@ -20,7 +20,7 @@ describe('planForSubscription', () => {
 
 describe('plan limits', () => {
   it('match the published plans', () => {
-    expect(PLAN_LIMITS.FREE).toEqual({ maxCustomers: 100, askAi: false });
-    expect(PLAN_LIMITS.PRO).toEqual({ maxCustomers: null, askAi: true });
+    expect(PLAN_LIMITS.FREE).toEqual({ maxCustomers: 100 });
+    expect(PLAN_LIMITS.PRO).toEqual({ maxCustomers: null });
   });
 });

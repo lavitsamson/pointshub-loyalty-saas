@@ -33,7 +33,7 @@ const PLAN_FEATURES: Record<Plan, string[]> = {
     'Customer portal',
     'Team accounts and audit log',
   ],
-  PRO: ['Unlimited customers', 'Everything in Free', '"Ask your data" AI insights'],
+  PRO: ['Unlimited customers', 'Everything in Free'],
 };
 
 export function BillingPage() {

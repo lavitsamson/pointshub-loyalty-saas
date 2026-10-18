@@ -69,7 +69,6 @@ describe('Billing', () => {
         hasBillingAccount: false,
         billingAvailable: true,
         usage: { customers: 0, customerLimit: 100 },
-        features: { askAi: false },
       });
     });
 
@@ -138,7 +137,6 @@ describe('Billing', () => {
         currentPeriodEnd: subscription.currentPeriodEnd!.toISOString(),
         cancelAtPeriodEnd: false,
         usage: { customerLimit: null },
-        features: { askAi: true },
       });
       expect(await auditActions(owner)).toEqual([
         expect.objectContaining({
