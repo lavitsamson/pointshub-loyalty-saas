@@ -133,8 +133,13 @@ Deferred: moved to [Proposed features](#proposed-features) for a later release.
 - [x] Membership changes lock the business, so concurrent removals cannot leave it ownerless
 - [x] Web security headers: Content Security Policy, `frame-ancestors 'none'`, referrer policy,
       HSTS in production; Playwright checks pages run without CSP violations
-- [ ] Accessibility pass
-- [ ] Playwright suite complete
+- [x] Accessibility pass: axe-core scans every merchant, portal and sign-in page (and a dialog)
+      for WCAG 2.2 A/AA in light and dark themes, on the seeded demo data; keyboard test for the
+      skip link and dialog focus
+- [x] Fix: dialogs opened from state returned focus to the page body on close; they now return
+      it to the control that opened them
+- [x] Playwright suite complete: merchant journey through the portal and back, bulk actions,
+      portal, billing, security headers and accessibility; CI seeds the demo data first
 - [ ] Performance check (50k customers / 500k ledger entries)
 
 ## 10. Release

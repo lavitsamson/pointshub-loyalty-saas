@@ -146,8 +146,10 @@ the demo businesses keep their seeded plans. To try upgrades with a
   (plus a phone viewport for public pages and the portal): a new business signs up through the
   emailed link, sets up its programme, adds a customer and records a purchase; the customer joins the portal through the emailed link
   (read from Mailpit) and redeems a reward; staff fulfil it by code. There are also
-  bulk-action, portal sign-up and billing-page flows. They need `docker compose up -d` and
-  `pnpm db:deploy` first.
+  bulk-action, portal sign-up and billing-page flows, a security-headers check, and an
+  accessibility scan (axe-core, WCAG 2.2 A/AA) of every page in light and dark themes plus
+  keyboard focus checks. They need `docker compose up -d`, `pnpm db:deploy` and `pnpm db:seed`
+  first.
 
 ## Design decisions
 
