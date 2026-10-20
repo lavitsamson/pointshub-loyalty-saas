@@ -22,7 +22,8 @@
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
     "studio": "prisma studio",
-    "seed": "tsx prisma/seed/index.ts"
+    "seed": "tsx prisma/seed/index.ts",
+    "seed:perf": "tsx prisma/seed/perf.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",
