@@ -49,6 +49,7 @@ export class TeamService {
     meta: RequestMeta,
   ): Promise<Member> {
     return this.prisma.unscoped.$transaction(async (tx) => {
+      await lockTenant(tx, ctx.tenantId);
       const target = await this.findMember(tx, ctx.tenantId, userId);
       this.assertCanManage(ctx, target.role);
       if (target.role === 'OWNER') await this.assertAnotherOwner(tx, ctx.tenantId, userId);
@@ -80,6 +81,7 @@ export class TeamService {
 
   async remove(ctx: TenantContext, userId: string, meta: RequestMeta): Promise<void> {
     await this.prisma.unscoped.$transaction(async (tx) => {
+      await lockTenant(tx, ctx.tenantId);
       const target = await this.findMember(tx, ctx.tenantId, userId);
       // Leaving a business yourself is allowed regardless of role, as long as an owner remains.
       if (userId !== ctx.userId) this.assertCanManage(ctx, target.role);
@@ -130,3 +132,12 @@ export class TeamService {
 }
 
 type Tx = Parameters<Parameters<PrismaService['unscoped']['$transaction']>[0]>[0];
+
+/**
+ * Serialises membership changes within a business. Without it, two owners demoting or
+ * removing each other at the same time would each see the other as the remaining owner,
+ * and the business would be left with none.
+ */
+async function lockTenant(tx: Tx, tenantId: string): Promise<void> {
+  await tx.$queryRaw`SELECT id FROM "Tenant" WHERE id = ${tenantId}::uuid FOR UPDATE`;
+}

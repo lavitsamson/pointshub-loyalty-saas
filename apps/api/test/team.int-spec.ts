@@ -214,6 +214,26 @@ describe('Team and invitations', () => {
       expect(res.body.type).toBe('/problems/last-owner');
     });
 
+    it('keeps an owner when two owners leave at the same moment', async () => {
+      const owner = await registerOwner(t.app);
+      const second = await addMember(owner, 'ADMIN');
+      // Owners are never invited; a second owner is promoted directly.
+      await t.prisma.unscoped.membership.update({
+        where: { userId_tenantId: { userId: second.userId, tenantId: owner.tenantId } },
+        data: { role: 'OWNER' },
+      });
+
+      const results = await Promise.all([
+        owner.client.delete(`/tenants/${owner.tenantId}/members/${owner.userId}`),
+        second.client.delete(`/tenants/${owner.tenantId}/members/${second.userId}`),
+      ]);
+      expect(results.map((r) => r.status).sort()).toEqual([204, 409]);
+      const owners = await t.prisma.unscoped.membership.count({
+        where: { tenantId: owner.tenantId, role: 'OWNER' },
+      });
+      expect(owners).toBe(1);
+    });
+
     it('lets a staff member leave on their own', async () => {
       const owner = await registerOwner(t.app);
       const staff = await addMember(owner, 'STAFF');
