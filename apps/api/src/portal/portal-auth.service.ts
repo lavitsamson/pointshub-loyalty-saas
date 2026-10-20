@@ -10,7 +10,7 @@ import { passwordFingerprint, PasswordService } from '../auth/password.service';
 import { RefreshTokenRejectedError, RefreshTokenService } from '../auth/refresh-token.service';
 import type { Session } from '../auth/session-cookies';
 import { InvalidTokenError, TokenService } from '../auth/token.service';
-import { INVALID_CREDENTIALS } from '../auth/auth.service';
+import { enforceLoginLimits, INVALID_CREDENTIALS } from '../auth/auth.service';
 import { ProblemException } from '../common/http/problem.exception';
 import { RateLimiterService } from '../common/rate-limit/rate-limiter.service';
 import { CustomersService, DUPLICATE_CUSTOMER } from '../customers/customers.service';
@@ -18,7 +18,6 @@ import { PrismaService } from '../infra/prisma.service';
 import { MailService } from '../mail/mail.service';
 import type { PortalContext } from './portal-context';
 
-const LOGIN_ATTEMPTS_PER_MINUTE = 5;
 /**
  * Join and reset requests email an address, so they are limited per address
  * rather than per IP: customers often sign up on the shop's shared wifi.
@@ -67,10 +66,11 @@ export class PortalAuthService {
     input: LoginInput,
     meta: RequestMeta,
   ): Promise<{ customerId: string }> {
-    await this.rateLimiter.enforce(
-      `portal-login:${portal.tenantId}:${meta.ip ?? 'unknown'}:${input.email}`,
-      LOGIN_ATTEMPTS_PER_MINUTE,
-      60,
+    await enforceLoginLimits(
+      this.rateLimiter,
+      `portal-login:${portal.tenantId}`,
+      meta,
+      input.email,
     );
 
     const customer = await this.prisma.scoped.customer.findUnique({

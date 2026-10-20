@@ -2,13 +2,45 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ENV, type Env } from '../config/env';
 import { MAIL_TRANSPORT, type MailTransport } from './mail-transport';
 
-/** Transactional emails sent while the user waits (password reset, invitations). */
+/** Transactional emails sent while the user waits (sign-up, password reset, invitations). */
 @Injectable()
 export class MailService {
   constructor(
     @Inject(MAIL_TRANSPORT) private readonly transport: MailTransport,
     @Inject(ENV) private readonly env: Env,
   ) {}
+
+  /** For a new address: following the link creates the account and the business. */
+  sendSignupLink(to: string, details: { businessName: string; token: string }): Promise<void> {
+    const link = `${this.env.WEB_ORIGIN}/register/complete?token=${encodeURIComponent(details.token)}`;
+    return this.transport.send({
+      to,
+      subject: 'Finish creating your PointsHub account',
+      text: [
+        `Thanks for signing up ${details.businessName} to PointsHub.`,
+        '',
+        `Choose a password to finish: ${link}`,
+        '',
+        'The link expires in 60 minutes. If this was not you, ignore this email.',
+      ].join('\n'),
+    });
+  }
+
+  /** For an address that already has an account: the sign-up form must not say so. */
+  sendSignupExistingAccount(to: string): Promise<void> {
+    return this.transport.send({
+      to,
+      subject: 'You already have a PointsHub account',
+      text: [
+        'Someone tried to create a PointsHub account with this email address, which already has one.',
+        '',
+        `Sign in: ${this.env.WEB_ORIGIN}/login`,
+        `Forgot your password? ${this.env.WEB_ORIGIN}/forgot-password`,
+        '',
+        'If this was not you, ignore this email.',
+      ].join('\n'),
+    });
+  }
 
   sendPasswordReset(to: string, token: string): Promise<void> {
     const link = `${this.env.WEB_ORIGIN}/reset-password?token=${encodeURIComponent(token)}`;

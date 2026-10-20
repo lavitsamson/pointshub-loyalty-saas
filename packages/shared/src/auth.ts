@@ -12,10 +12,14 @@ export const PasswordSchema = z
 
 export const PersonNameSchema = z.string().trim().min(1).max(100);
 
+/**
+ * Signing up asks for no password: every request gets the same answer and an emailed link,
+ * so the endpoint never reveals whether an address already has an account. A new address
+ * chooses its password from the link, which creates the account and the business.
+ */
 export const RegisterSchema = z.object({
   name: PersonNameSchema,
   email: EmailSchema,
-  password: PasswordSchema,
   businessName: z.string().trim().min(2).max(100),
   /** ISO 4217 currency for the loyalty programme. */
   currency: z
@@ -26,6 +30,12 @@ export const RegisterSchema = z.object({
     .default('GBP'),
 });
 export type RegisterInput = z.infer<typeof RegisterSchema>;
+
+export const CompleteRegistrationSchema = z.object({
+  token: z.string().min(1),
+  password: PasswordSchema,
+});
+export type CompleteRegistrationInput = z.infer<typeof CompleteRegistrationSchema>;
 
 export const LoginSchema = z.object({
   email: EmailSchema,

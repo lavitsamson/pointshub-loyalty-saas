@@ -11,6 +11,8 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
+  type CompleteRegistrationInput,
+  CompleteRegistrationSchema,
   ForgotPasswordSchema,
   type ForgotPasswordInput,
   LoginSchema,
@@ -38,13 +40,28 @@ export class AuthController {
 
   @Public()
   @Post('register')
-  @ApiOperation({ summary: 'Create an owner account, their business and a default programme' })
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({
+    summary: 'Start signing up: emails a link to finish, the same answer for every address',
+  })
   async register(
     @Body(new ZodValidationPipe(RegisterSchema)) body: RegisterInput,
     @ReqMeta() meta: RequestMeta,
+  ): Promise<void> {
+    await this.auth.register(body, meta);
+  }
+
+  @Public()
+  @Post('complete-registration')
+  @ApiOperation({
+    summary: 'Finish signing up from the emailed link: creates the owner, business and programme',
+  })
+  async completeRegistration(
+    @Body(new ZodValidationPipe(CompleteRegistrationSchema)) body: CompleteRegistrationInput,
+    @ReqMeta() meta: RequestMeta,
     @Res({ passthrough: true }) res: Response,
   ): Promise<MeResponse> {
-    const { userId } = await this.auth.register(body, meta);
+    const { userId } = await this.auth.completeRegistration(body, meta);
     setSessionCookies(res, await this.auth.startSession(userId), this.env);
     return this.auth.me(userId);
   }

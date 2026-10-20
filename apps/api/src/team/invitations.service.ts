@@ -16,7 +16,7 @@ import {
   PasswordSchema,
 } from '@pointshub/shared';
 import { AuditService } from '../audit/audit.service';
-import { INVALID_CREDENTIALS } from '../auth/auth.service';
+import { enforceLoginLimits, INVALID_CREDENTIALS } from '../auth/auth.service';
 import type { RequestMeta } from '../auth/decorators';
 import { PasswordService } from '../auth/password.service';
 import { InvalidTokenError, TokenService } from '../auth/token.service';
@@ -179,7 +179,7 @@ export class InvitationsService {
     const existingUser = await db.user.findUnique({ where: { email: invitation.email } });
     const newAccount = existingUser ? undefined : await this.newAccountDetails(input);
     if (existingUser) {
-      await this.rateLimiter.enforce(`login:${meta.ip ?? 'unknown'}:${existingUser.email}`, 5, 60);
+      await enforceLoginLimits(this.rateLimiter, 'login', meta, existingUser.email);
       if (!(await this.passwords.verify(existingUser.passwordHash, input.password))) {
         throw new UnauthorizedException(INVALID_CREDENTIALS);
       }

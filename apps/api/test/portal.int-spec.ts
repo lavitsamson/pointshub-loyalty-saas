@@ -195,12 +195,13 @@ describe('Customer portal', () => {
 
     it('rate-limits login attempts', async () => {
       const member = await joinPortal(t, slug);
+      const attacker = client();
       for (let i = 0; i < 5; i++) {
-        await client()
+        await attacker
           .post(`${base}/auth/login`, { email: member.email, password: 'wrong password!!' })
           .expect(401);
       }
-      await client()
+      await attacker
         .post(`${base}/auth/login`, { email: member.email, password: TEST_PASSWORD })
         .expect(429);
     });

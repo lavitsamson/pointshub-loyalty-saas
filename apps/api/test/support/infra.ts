@@ -11,5 +11,7 @@ export function testEnv(): Env {
     JWT_SECRET: 'integration-test-secret-that-is-long-enough',
     COOKIE_SECURE: 'false',
     WEB_ORIGIN: 'http://localhost:3000',
+    // ApiClient sends X-Forwarded-For, standing in for the web app's proxy.
+    TRUST_PROXY_HOPS: '1',
   });
 }

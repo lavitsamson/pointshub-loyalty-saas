@@ -1,9 +1,8 @@
-import { LoginSchema, RegisterSchema } from './auth';
+import { CompleteRegistrationSchema, LoginSchema, RegisterSchema } from './auth';
 
 const valid = {
   name: 'Ada Lovelace',
   email: '  Ada@Example.COM ',
-  password: 'correct horse battery',
   businessName: 'Analytical Coffee',
 };
 
@@ -15,12 +14,16 @@ describe('RegisterSchema', () => {
     });
   });
 
-  it('rejects passwords shorter than 12 characters', () => {
-    expect(RegisterSchema.safeParse({ ...valid, password: 'short-pass' }).success).toBe(false);
-  });
-
   it('rejects malformed currencies', () => {
     expect(RegisterSchema.safeParse({ ...valid, currency: 'POUND' }).success).toBe(false);
+  });
+});
+
+describe('CompleteRegistrationSchema', () => {
+  it('rejects passwords shorter than 12 characters', () => {
+    expect(
+      CompleteRegistrationSchema.safeParse({ token: 't', password: 'short-pass' }).success,
+    ).toBe(false);
   });
 });
 

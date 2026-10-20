@@ -1,5 +1,12 @@
 import type { MeResponse } from '@pointshub/shared';
-import { ApiClient, registerOwner, TEST_PASSWORD, uniqueEmail } from './support/api-client';
+import {
+  ApiClient,
+  randomIp,
+  registerOwner,
+  SIGNUP_LINK,
+  TEST_PASSWORD,
+  uniqueEmail,
+} from './support/api-client';
 import { createTestApp, type TestApp } from './support/test-app';
 
 const RESET_LINK = /reset-password\?token=([^\s]+)/;
@@ -21,18 +28,78 @@ describe('Auth', () => {
     return ([] as string[]).concat(setCookie ?? []).map((c) => c.split('=')[0]!);
   }
 
+  /** Asks to sign up and returns the token from the emailed link. */
+  async function signupToken(
+    email: string,
+    details: Partial<{ name: string; businessName: string; currency: string }> = {},
+  ): Promise<string> {
+    await client()
+      .post('/auth/register', { name: 'Ada', email, businessName: 'Biz', ...details })
+      .expect(202);
+    return t.mailbox.tokenFor(email.toLowerCase(), SIGNUP_LINK);
+  }
+
+  const complete = (token: string, password = TEST_PASSWORD) =>
+    client().post('/auth/complete-registration', { token, password });
+
   describe('POST /auth/register', () => {
+    it('answers new and registered addresses identically and creates nothing yet', async () => {
+      const owner = await registerOwner(t.app);
+      const fresh = uniqueEmail('fresh');
+
+      const forNew = await client()
+        .post('/auth/register', { name: 'New', email: fresh, businessName: 'New Biz' })
+        .expect(202);
+      const forExisting = await client()
+        .post('/auth/register', { name: 'Again', email: owner.email, businessName: 'Other' })
+        .expect(202);
+
+      expect(forNew.body).toEqual(forExisting.body);
+      expect(forNew.headers['set-cookie']).toBeUndefined();
+      expect(await t.prisma.unscoped.user.count({ where: { email: fresh } })).toBe(0);
+
+      // Only the emails differ: a link to finish for the new address, a reminder for the other.
+      expect(t.mailbox.lastTo(fresh).text).toMatch(SIGNUP_LINK);
+      const reminder = t.mailbox.lastTo(owner.email);
+      expect(reminder.subject).toBe('You already have a PointsHub account');
+      expect(reminder.text).not.toMatch(SIGNUP_LINK);
+    });
+
+    it('limits sign-up emails per address', async () => {
+      const email = uniqueEmail('flood');
+      for (let i = 0; i < 5; i++) {
+        await client()
+          .post('/auth/register', { name: 'A', email, businessName: 'Biz' })
+          .expect(202);
+      }
+      const limited = await client()
+        .post('/auth/register', { name: 'A', email, businessName: 'Biz' })
+        .expect(429);
+      expect(limited.body.type).toBe('/problems/rate-limited');
+    });
+
+    it('limits sign-ups per IP, whatever the address', async () => {
+      const ip = randomIp();
+      const from = () => new ApiClient(t.app, ip);
+      for (let i = 0; i < 20; i++) {
+        await from()
+          .post('/auth/register', { name: 'A', email: uniqueEmail('spray'), businessName: 'Biz' })
+          .expect(202);
+      }
+      await from()
+        .post('/auth/register', { name: 'A', email: uniqueEmail('spray'), businessName: 'Biz' })
+        .expect(429);
+    });
+  });
+
+  describe('POST /auth/complete-registration', () => {
     it('creates the owner, business, default programme and tiers, and signs in', async () => {
       const email = uniqueEmail('reg');
-      const res = await client()
-        .post('/auth/register', {
-          name: 'Ada',
-          email: email.toUpperCase(),
-          password: TEST_PASSWORD,
-          businessName: 'Bean & Brew Café',
-          currency: 'eur',
-        })
-        .expect(201);
+      const token = await signupToken(email.toUpperCase(), {
+        businessName: 'Bean & Brew Café',
+        currency: 'eur',
+      });
+      const res = await complete(token).expect(201);
 
       const me = res.body as MeResponse;
       expect(me.user.email).toBe(email);
@@ -48,6 +115,8 @@ describe('Auth', () => {
       );
       expect(setCookie[1]).toContain('Path=/api/v1/auth');
 
+      const user = await t.prisma.unscoped.user.findUniqueOrThrow({ where: { email } });
+      expect(user.emailVerifiedAt).not.toBeNull();
       const tenantId = me.memberships[0]!.tenantId;
       const program = await t.prisma.unscoped.loyaltyProgram.findUnique({ where: { tenantId } });
       expect(program?.currency).toBe('EUR');
@@ -64,37 +133,40 @@ describe('Auth', () => {
 
     it('never stores or returns the plain password', async () => {
       const email = uniqueEmail('hash');
-      const res = await client()
-        .post('/auth/register', { name: 'A', email, password: TEST_PASSWORD, businessName: 'Biz' })
-        .expect(201);
+      const res = await complete(await signupToken(email)).expect(201);
       expect(JSON.stringify(res.body)).not.toContain('password');
 
       const user = await t.prisma.unscoped.user.findUniqueOrThrow({ where: { email } });
       expect(user.passwordHash).toMatch(/^\$argon2id\$/);
     });
 
-    it('rejects an email that is already registered', async () => {
+    it('works once, even when the link is used twice at the same time', async () => {
+      const email = uniqueEmail('twice');
+      const token = await signupToken(email);
+      const results = await Promise.all([complete(token), complete(token)]);
+      expect(results.map((r) => r.status).sort()).toEqual([201, 400]);
+
+      const again = await complete(token).expect(400);
+      expect(again.body.type).toBe('/problems/invalid-signup-link');
+      expect(
+        await t.prisma.unscoped.tenant.count({
+          where: { memberships: { some: { user: { email } } } },
+        }),
+      ).toBe(1);
+    });
+
+    it('rejects tampered links and tokens minted for something else', async () => {
+      await complete('abc.def.ghi').expect(400);
+
       const owner = await registerOwner(t.app);
-      const res = await client()
-        .post('/auth/register', {
-          name: 'Again',
-          email: owner.email,
-          password: TEST_PASSWORD,
-          businessName: 'Other',
-        })
-        .expect(409);
-      expect(res.body).toMatchObject({ type: '/problems/email-taken', status: 409 });
+      await client().post('/auth/forgot-password', { email: owner.email }).expect(202);
+      const resetToken = t.mailbox.tokenFor(owner.email, RESET_LINK);
+      const res = await complete(resetToken).expect(400);
+      expect(res.body.type).toBe('/problems/invalid-signup-link');
     });
 
     it('enforces the password policy with a field-level error', async () => {
-      const res = await client()
-        .post('/auth/register', {
-          name: 'A',
-          email: uniqueEmail(),
-          password: 'short',
-          businessName: 'Biz',
-        })
-        .expect(400);
+      const res = await complete(await signupToken(uniqueEmail()), 'short').expect(400);
       expect(res.body.errors).toEqual([
         expect.objectContaining({ path: 'password', message: expect.stringContaining('12') }),
       ]);
@@ -133,16 +205,34 @@ describe('Auth', () => {
 
     it('rate-limits repeated attempts for the same email', async () => {
       const owner = await registerOwner(t.app);
+      const attacker = client();
       for (let i = 0; i < 5; i++) {
-        await client()
+        await attacker
           .post('/auth/login', { email: owner.email, password: 'wrong password!!' })
           .expect(401);
       }
-      const limited = await client()
+      const limited = await attacker
         .post('/auth/login', { email: owner.email, password: TEST_PASSWORD })
         .expect(429);
       expect(Number(limited.headers['retry-after'])).toBeGreaterThan(0);
       expect(limited.body.type).toBe('/problems/rate-limited');
+
+      // The owner, signing in from elsewhere, is not locked out by the attacker.
+      await client()
+        .post('/auth/login', { email: owner.email, password: TEST_PASSWORD })
+        .expect(200);
+    });
+
+    it('rate-limits one IP trying many emails (password spraying)', async () => {
+      const sprayer = client();
+      for (let i = 0; i < 30; i++) {
+        await sprayer
+          .post('/auth/login', { email: uniqueEmail('target'), password: 'Summer2026!!' })
+          .expect(401);
+      }
+      await sprayer
+        .post('/auth/login', { email: uniqueEmail('target'), password: 'Summer2026!!' })
+        .expect(429);
     });
   });
 
@@ -174,19 +264,14 @@ describe('Auth', () => {
     });
 
     it('revokes the whole token family when a used refresh token is replayed', async () => {
+      const owner = await registerOwner(t.app);
       const victim = client();
-      const email = uniqueEmail('victim');
-      const registered = await victim
-        .post('/auth/register', {
-          name: 'V',
-          email,
-          password: TEST_PASSWORD,
-          businessName: 'Victim Cafe',
-        })
-        .expect(201);
+      const signedIn = await victim
+        .post('/auth/login', { email: owner.email, password: TEST_PASSWORD })
+        .expect(200);
       // An attacker copies the refresh cookie...
       const stolenCookie = ([] as string[])
-        .concat(registered.headers['set-cookie'] ?? [])
+        .concat(signedIn.headers['set-cookie'] ?? [])
         .find((c) => c.startsWith('ph_refresh='))!
         .split(';')[0]!;
 

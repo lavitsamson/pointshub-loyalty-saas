@@ -10,7 +10,7 @@ const ALGORITHM = 'HS256';
  * (e.g. a password reset) is rejected everywhere else (e.g. as an access token).
  */
 export type TokenAudience =
-  'merchant' | 'customer' | 'password-reset' | 'invitation' | 'customer-password';
+  'merchant' | 'customer' | 'signup' | 'password-reset' | 'invitation' | 'customer-password';
 
 export class InvalidTokenError extends Error {
   override readonly name = 'InvalidTokenError';

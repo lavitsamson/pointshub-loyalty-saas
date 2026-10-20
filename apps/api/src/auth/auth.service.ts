@@ -1,7 +1,14 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import type { LoginInput, MeResponse, RegisterInput, ResetPasswordInput } from '@pointshub/shared';
+import type {
+  CompleteRegistrationInput,
+  LoginInput,
+  MeResponse,
+  RegisterInput,
+  ResetPasswordInput,
+} from '@pointshub/shared';
 import { randomBytes } from 'node:crypto';
 import { ProblemException } from '../common/http/problem.exception';
+import { isUniqueViolation } from '../common/prisma-errors';
 import { RateLimiterService } from '../common/rate-limit/rate-limiter.service';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../infra/prisma.service';
@@ -12,9 +19,38 @@ import { RefreshTokenRejectedError, RefreshTokenService } from './refresh-token.
 import type { Session } from './session-cookies';
 import { InvalidTokenError, TokenService } from './token.service';
 
-const LOGIN_ATTEMPTS_PER_MINUTE = 5;
 const FORGOT_PASSWORD_REQUESTS_PER_15_MIN = 5;
 const PASSWORD_RESET_TTL_SECONDS = 30 * 60;
+const SIGNUPS_PER_IP_PER_HOUR = 20;
+const SIGNUP_EMAILS_PER_15_MIN = 5;
+const SIGNUP_LINK_TTL_SECONDS = 60 * 60;
+
+const LOGIN_ATTEMPTS_PER_MINUTE = 5;
+/** Across all emails: stops one client trying a common password against many accounts. */
+const LOGIN_ATTEMPTS_PER_IP_PER_MINUTE = 30;
+
+/**
+ * Login throttling, shared by the merchant and portal sign-in: 5 a minute per IP and email
+ * (guessing one account's password), and 30 a minute per IP whatever the email (spraying).
+ */
+export async function enforceLoginLimits(
+  rateLimiter: RateLimiterService,
+  scope: string,
+  meta: RequestMeta,
+  email: string,
+): Promise<void> {
+  const ip = meta.ip ?? 'unknown';
+  await rateLimiter.enforce(`${scope}-ip:${ip}`, LOGIN_ATTEMPTS_PER_IP_PER_MINUTE, 60);
+  await rateLimiter.enforce(`${scope}:${ip}:${email}`, LOGIN_ATTEMPTS_PER_MINUTE, 60);
+}
+
+const invalidSignupLink = () =>
+  new ProblemException({
+    type: '/problems/invalid-signup-link',
+    title: 'Invalid or expired link',
+    status: 400,
+    detail: 'Sign up again to get a new link, or sign in if you already finished.',
+  });
 
 /** Tiers every new programme starts with; merchants can edit them afterwards. */
 const DEFAULT_TIERS = [
@@ -39,24 +75,102 @@ export class AuthService {
     private readonly audit: AuditService,
   ) {}
 
-  /** Creates the owner, their business (tenant) and a default programme in one transaction. */
-  async register(input: RegisterInput, meta: RequestMeta): Promise<{ userId: string }> {
-    const db = this.prisma.unscoped;
-    if (await db.user.findUnique({ where: { email: input.email }, select: { id: true } })) {
-      throw new ProblemException({
-        type: '/problems/email-taken',
-        title: 'Email already registered',
-        status: 409,
-        detail: 'An account with this email already exists. Sign in instead.',
-      });
+  /**
+   * Answers every request the same way, so sign-up cannot be used to discover who has an
+   * account: the address is emailed either a link to finish signing up or, if it already has
+   * an account, a reminder to sign in. Nothing is created until the link is followed.
+   */
+  async register(input: RegisterInput, meta: RequestMeta): Promise<void> {
+    // Per IP so one client cannot email arbitrary addresses; per address so no one is flooded.
+    await this.rateLimiter.enforce(
+      `signup-ip:${meta.ip ?? 'unknown'}`,
+      SIGNUPS_PER_IP_PER_HOUR,
+      60 * 60,
+    );
+    await this.rateLimiter.enforce(
+      `signup-email:${input.email}`,
+      SIGNUP_EMAILS_PER_15_MIN,
+      15 * 60,
+    );
+
+    const taken = await this.emailTaken(input.email);
+    try {
+      if (taken) {
+        await this.mail.sendSignupExistingAccount(input.email);
+      } else {
+        const token = await this.tokens.sign(
+          'signup',
+          input.email,
+          { name: input.name, biz: input.businessName, cur: input.currency },
+          SIGNUP_LINK_TTL_SECONDS,
+        );
+        await this.mail.sendSignupLink(input.email, { businessName: input.businessName, token });
+      }
+    } catch (error) {
+      // Not surfaced to the caller; that would reveal whether the address has an account.
+      this.logger.error(`Sign-up email failed: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Follows the emailed link: creates the owner, their business (tenant) and a default
+   * programme in one transaction. Following the link proves the address, and the link works
+   * once, because the address has an account from then on.
+   */
+  async completeRegistration(
+    input: CompleteRegistrationInput,
+    meta: RequestMeta,
+  ): Promise<{ userId: string }> {
+    let details: { email: string; name: string; businessName: string; currency: string };
+    try {
+      const { subject, claims } = await this.tokens.verify('signup', input.token);
+      const { name, biz, cur } = claims;
+      if (typeof name !== 'string' || typeof biz !== 'string' || typeof cur !== 'string') {
+        throw invalidSignupLink();
+      }
+      details = { email: subject, name, businessName: biz, currency: cur };
+    } catch (error) {
+      if (error instanceof InvalidTokenError) throw invalidSignupLink();
+      throw error;
     }
 
+    if (await this.emailTaken(details.email)) throw invalidSignupLink();
     const passwordHash = await this.passwords.hash(input.password);
-    const slug = await this.availableSlug(input.businessName);
+    const slug = await this.availableSlug(details.businessName);
 
-    const user = await db.$transaction(async (tx) => {
+    try {
+      return await this.createOwnerAndBusiness(details, passwordHash, slug, meta);
+    } catch (error) {
+      // The same link used twice at once: the unique email lets only one through.
+      if (isUniqueViolation(error) && (await this.emailTaken(details.email))) {
+        throw invalidSignupLink();
+      }
+      throw error;
+    }
+  }
+
+  private async emailTaken(email: string): Promise<boolean> {
+    const user = await this.prisma.unscoped.user.findUnique({
+      where: { email },
+      select: { id: true },
+    });
+    return user !== null;
+  }
+
+  private async createOwnerAndBusiness(
+    input: { email: string; name: string; businessName: string; currency: string },
+    passwordHash: string,
+    slug: string,
+    meta: RequestMeta,
+  ): Promise<{ userId: string }> {
+    const user = await this.prisma.unscoped.$transaction(async (tx) => {
       const user = await tx.user.create({
-        data: { email: input.email, name: input.name, passwordHash },
+        data: {
+          email: input.email,
+          name: input.name,
+          passwordHash,
+          emailVerifiedAt: new Date(),
+        },
       });
       const tenant = await tx.tenant.create({ data: { name: input.businessName, slug } });
       await tx.membership.create({
@@ -84,11 +198,7 @@ export class AuthService {
   }
 
   async login(input: LoginInput, meta: RequestMeta): Promise<{ userId: string }> {
-    await this.rateLimiter.enforce(
-      `login:${meta.ip ?? 'unknown'}:${input.email}`,
-      LOGIN_ATTEMPTS_PER_MINUTE,
-      60,
-    );
+    await enforceLoginLimits(this.rateLimiter, 'login', meta, input.email);
 
     const user = await this.prisma.unscoped.user.findUnique({ where: { email: input.email } });
     const valid = user
@@ -162,6 +272,11 @@ export class AuthService {
   async forgotPassword(email: string, meta: RequestMeta): Promise<void> {
     await this.rateLimiter.enforce(
       `forgot-password:${meta.ip ?? 'unknown'}`,
+      FORGOT_PASSWORD_REQUESTS_PER_15_MIN,
+      15 * 60,
+    );
+    await this.rateLimiter.enforce(
+      `forgot-password-email:${email}`,
       FORGOT_PASSWORD_REQUESTS_PER_15_MIN,
       15 * 60,
     );
