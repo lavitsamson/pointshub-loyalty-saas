@@ -2,7 +2,7 @@
 
 import { X } from 'lucide-react';
 import { Dialog as DialogPrimitive } from 'radix-ui';
-import type { ComponentProps, ReactNode } from 'react';
+import { type ComponentProps, type ReactNode, useRef } from 'react';
 import { cn } from '@/lib/utils';
 
 export const Dialog = DialogPrimitive.Root;
@@ -14,14 +14,23 @@ interface DialogContentProps extends ComponentProps<typeof DialogPrimitive.Conte
   description?: ReactNode;
 }
 
-/** Modal with a required title, so every dialog is announced properly. Focus is trapped by Radix. */
+/**
+ * Modal with a required title, so every dialog is announced properly. Focus is trapped by Radix.
+ *
+ * Most dialogs here are opened from state rather than a Radix trigger, which leaves Radix
+ * nothing to return focus to on close. So the element focused when the dialog opened is
+ * remembered and focused again afterwards, and keyboard users keep their place.
+ */
 export function DialogContent({
   title,
   description,
   className,
   children,
+  onOpenAutoFocus,
+  onCloseAutoFocus,
   ...props
 }: DialogContentProps) {
+  const openedFrom = useRef<HTMLElement | null>(null);
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-black/50" />
@@ -31,6 +40,18 @@ export function DialogContent({
           className,
         )}
         {...(description ? {} : { 'aria-describedby': undefined })}
+        onOpenAutoFocus={(event) => {
+          // Runs before Radix moves focus inside, so this is still the opening control.
+          openedFrom.current =
+            document.activeElement instanceof HTMLElement ? document.activeElement : null;
+          onOpenAutoFocus?.(event);
+        }}
+        onCloseAutoFocus={(event) => {
+          onCloseAutoFocus?.(event);
+          if (event.defaultPrevented || !openedFrom.current?.isConnected) return;
+          event.preventDefault();
+          openedFrom.current.focus();
+        }}
         {...props}
       >
         <div className="flex flex-col gap-1 pr-6">
