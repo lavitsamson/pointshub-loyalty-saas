@@ -35,8 +35,17 @@ tenant guard reads the caller's membership on every `/tenants/:tenantId` request
 change or removal takes effect on the next request rather than when the token expires. That is
 one indexed primary-key lookup per request.
 
-**Purpose-bound tokens.** Every JWT names its purpose in `aud` (`merchant`, `customer`,
+**Purpose-bound tokens.** Every JWT names its purpose in `aud` (`merchant`, `customer`, `signup`,
 `password-reset`, `invitation`); a token minted for one purpose is rejected for every other.
+
+- _Sign-up_ (added 2026-10-20) asks for the details but no password, and answers every address
+  with the same empty 202. A new address is emailed a `signup` link carrying the details;
+  choosing a password from it creates the user, business and programme in one transaction and
+  marks the email verified. An address that already has an account is emailed a reminder to
+  sign in instead. So sign-up no longer reveals who has an account (it used to answer 409), and
+  every account's email is proven. The link works once because the address has an account
+  afterwards; two uses at the same instant are settled by the unique email. The cost is one
+  extra step for new merchants.
 
 - _Password reset_ tokens embed a fingerprint of the current password hash, so they become
   invalid the moment the password changes: single-use without a token table. A reset also
@@ -49,9 +58,11 @@ one indexed primary-key lookup per request.
 state-changing request must carry `X-Requested-With`, which a cross-site form cannot set and a
 cross-site `fetch` cannot set without a CORS preflight that only the web origin passes.
 
-**Brute force.** Login is limited to 5 attempts per minute per IP and email (Redis fixed window,
-shared by all API instances). Unknown emails take as long as wrong passwords (a dummy argon2
-verification) and return the same error.
+**Brute force.** Login is limited to 5 attempts per minute per IP and email, and 30 per minute
+per IP across all emails, which stops one client spraying a common password over many accounts
+(Redis fixed windows, shared by all API instances). Unknown emails take as long as wrong
+passwords (a dummy argon2 verification) and return the same error. Emails sent on request
+(sign-up, password reset) are limited per IP and per address.
 
 ## Alternatives considered
 

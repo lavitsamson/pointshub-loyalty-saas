@@ -143,8 +143,8 @@ the demo businesses keep their seeded plans. To try upgrades with a
   stats end to end, duplicate deliveries, retries into the dead-letter queue, concurrent relays,
   and the expiry jobs.
 - **End-to-end** tests (`apps/web/e2e`) start the built API and web app and drive them in Chromium
-  (plus a phone viewport for public pages and the portal): a new business sets up its programme,
-  adds a customer and records a purchase; the customer joins the portal through the emailed link
+  (plus a phone viewport for public pages and the portal): a new business signs up through the
+  emailed link, sets up its programme, adds a customer and records a purchase; the customer joins the portal through the emailed link
   (read from Mailpit) and redeems a reward; staff fulfil it by code. There are also
   bulk-action, portal sign-up and billing-page flows. They need `docker compose up -d` and
   `pnpm db:deploy` first.
@@ -156,6 +156,7 @@ the demo businesses keep their seeded plans. To try upgrades with a
 - [ADR 0002 — Authentication and sessions](docs/adr/0002-authentication-and-sessions.md):
   15-minute JWTs and rotating refresh tokens in httpOnly cookies, with reuse detection that
   revokes the whole session family; roles are checked per request so changes apply instantly.
+  Sign-up finishes from an emailed link, so it never reveals who already has an account.
 - [ADR 0003 — Points ledger](docs/adr/0003-points-ledger.md): an append-only ledger (enforced by a
   trigger) with a cached balance updated under a row lock; idempotent purchases and exact decimal
   maths, proven by a 200-operation invariant test and concurrent-redemption tests.
@@ -180,6 +181,12 @@ Smaller decisions worth knowing:
   install scripts are opt-in.
 - **TypeScript 6.** TypeScript 7 is available, but typescript-eslint, ts-jest and `@nestjs/swagger`
   do not support it yet.
+
+## Security
+
+[docs/SECURITY.md](docs/SECURITY.md) lists the threats considered (tenant data leakage, IDOR,
+account enumeration, credential attacks, token theft, CSRF and clickjacking, webhook spoofing,
+points fraud) with the mitigation and the tests for each, and the risks accepted.
 
 ## How I used AI
 

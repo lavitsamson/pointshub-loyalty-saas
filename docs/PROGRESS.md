@@ -125,7 +125,14 @@ Deferred: moved to [Proposed features](#proposed-features) for a later release.
 
 ## 9. Hardening
 
-- [ ] Security review and `docs/SECURITY.md`
+- [x] Security review and `docs/SECURITY.md` (threats, mitigations, tests, accepted risks)
+- [x] Sign-up by emailed link: one answer for every address, so sign-up no longer reveals who
+      has an account; every merchant email is verified
+- [x] Login limited per IP across emails (password spraying); sign-up and reset emails limited
+      per IP and per address
+- [x] Membership changes lock the business, so concurrent removals cannot leave it ownerless
+- [x] Web security headers: Content Security Policy, `frame-ancestors 'none'`, referrer policy,
+      HSTS in production; Playwright checks pages run without CSP violations
 - [ ] Accessibility pass
 - [ ] Playwright suite complete
 - [ ] Performance check (50k customers / 500k ledger entries)
