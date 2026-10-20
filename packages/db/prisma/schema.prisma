@@ -177,6 +177,14 @@ model Customer {
   @@unique([tenantId, email])
   @@index([tenantId, createdAt])
   @@index([tenantId, currentTierId])
+  // The customer list's other keyset orders (sort value, then id), so a page reads ~25 rows.
+  @@index([tenantId, name, id])
+  @@index([tenantId, pointsBalance(sort: Desc), id(sort: Desc)])
+  // Substring search (ILIKE '%term%') and tag filters; needs the pg_trgm extension.
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@index([email(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@index([phone(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@index([tags], type: Gin)
 }
 
 model LoyaltyProgram {
@@ -243,7 +251,8 @@ model Purchase {
   ledgerEntries PointsLedgerEntry[]
 
   @@unique([tenantId, idempotencyKey])
-  @@index([tenantId, customerId, createdAt])
+  // Leads with the customer for the same reasons as on PointsLedgerEntry.
+  @@index([customerId, createdAt])
   @@index([tenantId, createdAt])
 }
 
@@ -270,9 +279,14 @@ model PointsLedgerEntry {
   purchase   Purchase?   @relation(fields: [purchaseId], references: [id])
   redemption Redemption? @relation(fields: [redemptionId], references: [id])
 
-  @@index([tenantId, customerId, createdAt])
+  // Customer ids are unique, so this serves a customer's history (tenantId is then a cheap
+  // filter) and also the per-row lookups when a business and its customers are deleted.
+  @@index([customerId, createdAt])
   @@index([tenantId, type, createdAt])
   @@index([tenantId, expiresAt])
+  // Foreign keys: without these, every deleted purchase or redemption scans the whole ledger.
+  @@index([purchaseId])
+  @@index([redemptionId])
 }
 
 model Reward {

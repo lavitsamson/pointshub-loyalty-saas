@@ -36,7 +36,10 @@ and make the safe path the default path:
 2. **A Prisma Client extension injects `tenantId`** into every query on tenant-owned models and
    throws if no tenant context is set. Raw SQL helpers take `tenantId` as an explicit argument.
 3. **Every tenant-owned table has an index that starts with `tenantId`**, so scoped queries stay
-   fast and the planner never needs a cross-tenant scan.
+   fast and the planner never needs a cross-tenant scan. The exception is lookups by a
+   customer's id (their points history and purchases): customer ids are unique across tenants,
+   so those indexes lead with `customerId`, which also serves the database's per-customer
+   foreign-key checks when a business is deleted (see the performance notes in the README).
 4. **Cross-tenant access returns 404, not 403**, so the API does not reveal that another tenant's
    resource exists.
 5. **A tenant isolation test suite** proves, for every tenant-scoped endpoint, that a user of
