@@ -140,7 +140,12 @@ Deferred: moved to [Proposed features](#proposed-features) for a later release.
       it to the control that opened them
 - [x] Playwright suite complete: merchant journey through the portal and back, bulk actions,
       portal, billing, security headers and accessibility; CI seeds the demo data first
-- [ ] Performance check (50k customers / 500k ledger entries)
+- [x] Performance check: `pnpm db:seed:perf` (50k customers / 500k ledger entries) and
+      `pnpm perf:customers` (p95 per list scenario over HTTP, 300 ms budget); results in README
+- [x] Indexes for the customer list's name and points orders, trigram search and tag filters
+- [x] Fix: deleting a business took 151 s at this size (unindexed ledger foreign keys); 0.1 s now
+- [x] Fix: `pnpm db:seed` failed on a fresh clone (it needs the built shared package); seeding now
+      builds its dependencies first
 
 ## 10. Release
 

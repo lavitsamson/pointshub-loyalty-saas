@@ -122,17 +122,20 @@ the demo businesses keep their seeded plans. To try upgrades with a
 
 ## Commands
 
-| Command           | What it does                                                                                                 |
-| ----------------- | ------------------------------------------------------------------------------------------------------------ |
-| `pnpm dev`        | Runs web, API and worker in watch mode                                                                       |
-| `pnpm build`      | Builds every package                                                                                         |
-| `pnpm lint`       | ESLint across the workspace                                                                                  |
-| `pnpm typecheck`  | `tsc --noEmit` across the workspace                                                                          |
-| `pnpm test`       | Unit tests                                                                                                   |
-| `pnpm test:int`   | API and worker integration tests against real Postgres, Redis and RabbitMQ (Testcontainers; Docker required) |
-| `pnpm test:e2e`   | Playwright end-to-end tests                                                                                  |
-| `pnpm db:migrate` | Creates/applies migrations in development                                                                    |
-| `pnpm db:deploy`  | Applies committed migrations (CI, production)                                                                |
+| Command               | What it does                                                                                                 |
+| --------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `pnpm dev`            | Runs web, API and worker in watch mode                                                                       |
+| `pnpm build`          | Builds every package                                                                                         |
+| `pnpm lint`           | ESLint across the workspace                                                                                  |
+| `pnpm typecheck`      | `tsc --noEmit` across the workspace                                                                          |
+| `pnpm test`           | Unit tests                                                                                                   |
+| `pnpm test:int`       | API and worker integration tests against real Postgres, Redis and RabbitMQ (Testcontainers; Docker required) |
+| `pnpm test:e2e`       | Playwright end-to-end tests                                                                                  |
+| `pnpm db:migrate`     | Creates/applies migrations in development                                                                    |
+| `pnpm db:deploy`      | Applies committed migrations (CI, production)                                                                |
+| `pnpm db:seed`        | Recreates the demo businesses (safe to re-run)                                                               |
+| `pnpm db:seed:perf`   | Loads the performance dataset: one business with 50,000 customers                                            |
+| `pnpm perf:customers` | Benchmarks the customer list against the performance dataset (API must be running)                           |
 
 ## Testing
 
@@ -150,6 +153,43 @@ the demo businesses keep their seeded plans. To try upgrades with a
   accessibility scan (axe-core, WCAG 2.2 A/AA) of every page in light and dark themes plus
   keyboard focus checks. They need `docker compose up -d`, `pnpm db:deploy` and `pnpm db:seed`
   first.
+
+## Performance
+
+The customer list was measured against one business with **50,000 customers and 500,071
+ledger entries** (`pnpm db:seed:perf`). `pnpm perf:customers` sends 50 sequential requests per
+scenario through the real HTTP API (session, tenant guard, validation, serialisation), 25 rows a
+page, and fails if any p95 exceeds the 300 ms budget. Run locally on Windows 11 with
+PostgreSQL 17 in Docker Desktop:
+
+| Scenario                      | p95 before | p95 after |
+| ----------------------------- | ---------: | --------: |
+| Newest first (default)        |     8.9 ms |    8.7 ms |
+| Sorted by name                |    20.3 ms |    5.4 ms |
+| Sorted by points              |    15.5 ms |    5.5 ms |
+| Page 20 (keyset cursor)       |    10.9 ms |    7.0 ms |
+| Search, common name           |    10.9 ms |   12.3 ms |
+| Search by email fragment      |    72.5 ms |    8.2 ms |
+| Search, no match              |    70.2 ms |    4.8 ms |
+| Filter by tag                 |     6.3 ms |    6.4 ms |
+| Tag filter + sorted by points |    18.9 ms |    8.7 ms |
+| Customer's points history     |     6.4 ms |    6.8 ms |
+
+Every case was within budget before, but the query plans showed why some were slower: sorting
+by name or points, searching and filtering by tag read all 50,000 of the business's rows, so
+they would keep growing with it. The indexes added:
+
+- `(tenantId, name, id)` and `(tenantId, pointsBalance DESC, id DESC)`, matching the keyset
+  orders, so a page reads about 25 index entries however large the business is.
+- Trigram GIN indexes (`pg_trgm`) on name, email and phone for substring search, and a GIN
+  index on tags. A search with no match now reads no rows instead of all of them.
+
+Loading the dataset found a worse problem: **deleting a business took 151 seconds**. Foreign
+keys from the ledger to purchases and redemptions had no index, so every cascaded delete scanned
+the whole ledger, and the per-customer indexes led with `tenantId`, so per-customer cascades
+could not use them. With indexes on the ledger's foreign keys, and the customer-history indexes
+led by `customerId` (unique, so `tenantId` becomes a cheap filter), the same delete takes
+**0.1 seconds**.
 
 ## Design decisions
 
