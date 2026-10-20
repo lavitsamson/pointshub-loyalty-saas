@@ -37,6 +37,14 @@
       "dependsOn": ["^build", "generate"],
       "cache": false
     },
+    "seed": {
+      "dependsOn": ["^build", "generate"],
+      "cache": false
+    },
+    "seed:perf": {
+      "dependsOn": ["^build", "generate"],
+      "cache": false
+    },
     "generate": {
       "inputs": ["prisma/schema.prisma"],
       "outputs": ["src/generated/**"]

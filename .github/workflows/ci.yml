@@ -63,10 +63,11 @@ jobs:
 
       - run: pnpm db:deploy
 
-      # The demo businesses: the accessibility scan reads their pages, full of realistic data.
-      - run: pnpm db:seed
-
       - run: pnpm build
+
+      # The demo businesses: the accessibility scan reads their pages, full of realistic data.
+      # After the build: the seed uses the built @pointshub/shared.
+      - run: pnpm db:seed
 
       - run: pnpm --filter @pointshub/web exec playwright install --with-deps chromium
 
