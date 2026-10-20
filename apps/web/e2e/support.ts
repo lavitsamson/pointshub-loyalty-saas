@@ -3,6 +3,11 @@ import { randomUUID } from 'node:crypto';
 
 export const PASSWORD = 'correct horse battery staple';
 
+/** The seeded demo business (`pnpm db:seed`), signed in once per run by demo.setup.ts. */
+export const DEMO_SLUG = 'bean-and-brew';
+export const DEMO_PASSWORD = 'DemoPass123!';
+export const DEMO_STATE = 'e2e/.auth/demo.json';
+
 export const uniqueEmail = (label: string) => `${label}-${randomUUID().slice(0, 8)}@example.test`;
 
 export const SIGNUP_LINK = /http\S+\/register\/complete\?token=\S+/;

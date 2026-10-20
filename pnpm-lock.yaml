@@ -381,6 +381,9 @@ importers:
       eslint:
         specifier: 10.11.0
         version: 10.11.0(jiti@2.7.0)(supports-color@8.1.1)
+      ioredis:
+        specifier: 6.0.0
+        version: 6.0.0(supports-color@8.1.1)
       postcss:
         specifier: 8.5.28
         version: 8.5.28

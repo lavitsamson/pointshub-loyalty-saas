@@ -5,6 +5,7 @@ const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${PORT}`;
 
 export default defineConfig({
   testDir: './e2e',
+  globalSetup: './e2e/global-setup.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -14,7 +15,9 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    // Signs in the seeded demo accounts once for the specs that read the demo business.
+    { name: 'setup', testMatch: /demo\.setup\.ts/ },
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] }, dependencies: ['setup'] },
     // Merchant flows are desktop-first; the phone run covers the public pages and the portal.
     { name: 'mobile', use: { ...devices['Pixel 7'] }, testMatch: /(home|portal)\.spec\.ts/ },
   ],

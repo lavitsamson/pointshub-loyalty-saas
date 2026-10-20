@@ -17,6 +17,8 @@ packages/db/src/generated/
 coverage/
 playwright-report/
 test-results/
+# Saved Playwright sessions
+apps/web/e2e/.auth/
 blob-report/
 
 # Env
