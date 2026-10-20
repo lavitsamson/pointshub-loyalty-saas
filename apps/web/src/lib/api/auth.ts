@@ -2,6 +2,7 @@
 
 import type {
   AcceptInvitationInput,
+  CompleteRegistrationInput,
   ForgotPasswordInput,
   InvitationPreview,
   LoginInput,
@@ -29,7 +30,7 @@ export function useMe() {
   });
 }
 
-/** Signing in, registering or accepting an invite all return the new session's user. */
+/** Signing in, finishing sign-up or accepting an invite all return the new session's user. */
 function useSessionMutation<TInput>(request: (input: TInput) => Promise<MeResponse>) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -45,8 +46,14 @@ function useSessionMutation<TInput>(request: (input: TInput) => Promise<MeRespon
 export const useLogin = () =>
   useSessionMutation((input: LoginInput) => api.post<MeResponse>('/auth/login', input));
 
+/** Emails a link to finish signing up; the answer is the same whether or not the email is new. */
 export const useRegister = () =>
-  useSessionMutation((input: RegisterInput) => api.post<MeResponse>('/auth/register', input));
+  useMutation({ mutationFn: (input: RegisterInput) => api.post<void>('/auth/register', input) });
+
+export const useCompleteRegistration = () =>
+  useSessionMutation((input: CompleteRegistrationInput) =>
+    api.post<MeResponse>('/auth/complete-registration', input),
+  );
 
 export const useAcceptInvitation = (token: string) =>
   useSessionMutation((input: AcceptInvitationInput) =>

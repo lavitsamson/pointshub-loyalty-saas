@@ -1,20 +1,22 @@
 import { expect, test } from '@playwright/test';
 import type { MeResponse } from '@pointshub/shared';
-import { emailLink, PASSWORD, uniqueEmail } from './support';
+import { emailLink, PASSWORD, SIGNUP_LINK, uniqueEmail } from './support';
 
 const csrf = { 'X-Requested-With': 'XMLHttpRequest' };
 
 test('a new customer joins a business from its portal', async ({ page, request }) => {
   const email = uniqueEmail('member');
   // The business and its catalogue are set up through the API; this test is about the portal.
-  const registered = await request.post('/api/v1/auth/register', {
+  const ownerEmail = uniqueEmail('owner');
+  const signup = await request.post('/api/v1/auth/register', {
     headers: csrf,
-    data: {
-      name: 'Pat Owner',
-      email: uniqueEmail('owner'),
-      password: PASSWORD,
-      businessName: 'Portal Bakery',
-    },
+    data: { name: 'Pat Owner', email: ownerEmail, businessName: 'Portal Bakery' },
+  });
+  expect(signup.status()).toBe(202);
+  const signupLink = new URL(await emailLink(request, ownerEmail, SIGNUP_LINK));
+  const registered = await request.post('/api/v1/auth/complete-registration', {
+    headers: csrf,
+    data: { token: signupLink.searchParams.get('token'), password: PASSWORD },
   });
   expect(registered.ok()).toBe(true);
   const { tenantId, tenantSlug } = ((await registered.json()) as MeResponse).memberships[0]!;

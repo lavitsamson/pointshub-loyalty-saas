@@ -2,14 +2,16 @@
 
 import { PASSWORD_MIN_LENGTH, type RegisterInput, RegisterSchema } from '@pointshub/shared';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { AuthCard } from '@/components/auth/auth-card';
+import { NewPasswordSchema } from '@/components/auth/password-forms';
 import { FormError } from '@/components/form-error';
 import { Button } from '@/components/ui/button';
+import { Alert } from '@/components/ui/feedback';
 import { describedBy, Field } from '@/components/ui/field';
 import { Input, Select } from '@/components/ui/input';
-import { useRegister } from '@/lib/api/auth';
+import { useCompleteRegistration, useRegister } from '@/lib/api/auth';
 import { applyServerErrors, zodResolver } from '@/lib/forms';
 import { homeFor } from '@/lib/navigation';
 
@@ -21,34 +23,44 @@ const CURRENCIES = [
   { code: 'CAD', label: 'Canadian dollar (C$)' },
 ];
 
+const signInFooter = (
+  <>
+    Already have an account?{' '}
+    <Link href="/login" className="font-medium text-primary hover:underline">
+      Sign in
+    </Link>
+  </>
+);
+
+/** Step one of signing up: the details, then a link by email to choose a password. */
 export function RegisterForm() {
-  const router = useRouter();
   const register = useRegister();
   const form = useForm({
     resolver: zodResolver(RegisterSchema),
-    defaultValues: { name: '', email: '', password: '', businessName: '', currency: 'GBP' },
+    defaultValues: { name: '', email: '', businessName: '', currency: 'GBP' },
   });
   const { errors } = form.formState;
-  const passwordHint = `At least ${PASSWORD_MIN_LENGTH} characters. A short phrase works well.`;
 
   const submit = (input: RegisterInput) =>
-    register.mutate(input, {
-      onSuccess: (me) => router.replace(homeFor(me)),
-      onError: (error) => applyServerErrors(form, error),
-    });
+    register.mutate(input, { onError: (error) => applyServerErrors(form, error) });
+
+  if (register.isSuccess) {
+    return (
+      <AuthCard title="Check your email" footer={signInFooter}>
+        <p className="text-sm">
+          We have sent a link to <strong>{register.variables.email}</strong>. Open it to choose a
+          password and finish setting up {register.variables.businessName}. The link expires in 60
+          minutes.
+        </p>
+      </AuthCard>
+    );
+  }
 
   return (
     <AuthCard
       title="Create your business account"
       description="We set up a loyalty programme with Bronze, Silver and Gold tiers to start you off."
-      footer={
-        <>
-          Already have an account?{' '}
-          <Link href="/login" className="font-medium text-primary hover:underline">
-            Sign in
-          </Link>
-        </>
-      }
+      footer={signInFooter}
     >
       <form onSubmit={form.handleSubmit(submit)} noValidate className="flex flex-col gap-4">
         <FormError error={register.error} />
@@ -59,20 +71,17 @@ export function RegisterForm() {
             {...form.register('name')}
           />
         </Field>
-        <Field id="email" label="Email" error={errors.email?.message}>
+        <Field
+          id="email"
+          label="Email"
+          error={errors.email?.message}
+          hint="We email you a link to confirm it."
+        >
           <Input
             type="email"
             autoComplete="email"
-            {...describedBy('email', errors.email?.message)}
+            {...describedBy('email', errors.email?.message, true)}
             {...form.register('email')}
-          />
-        </Field>
-        <Field id="password" label="Password" error={errors.password?.message} hint={passwordHint}>
-          <Input
-            type="password"
-            autoComplete="new-password"
-            {...describedBy('password', errors.password?.message, true)}
-            {...form.register('password')}
           />
         </Field>
         <Field id="businessName" label="Business name" error={errors.businessName?.message}>
@@ -95,7 +104,81 @@ export function RegisterForm() {
           </Select>
         </Field>
         <Button type="submit" disabled={register.isPending}>
-          {register.isPending ? 'Creating your account…' : 'Create account'}
+          {register.isPending ? 'Sending…' : 'Continue'}
+        </Button>
+      </form>
+    </AuthCard>
+  );
+}
+
+/** Step two, from the emailed link: choosing a password creates the account and business. */
+export function CompleteRegistrationForm() {
+  const token = useSearchParams().get('token') ?? '';
+  const router = useRouter();
+  const complete = useCompleteRegistration();
+  const form = useForm({
+    resolver: zodResolver(NewPasswordSchema),
+    defaultValues: { password: '', confirm: '' },
+  });
+  const { errors } = form.formState;
+
+  if (!token) {
+    return (
+      <AuthCard title="Link incomplete" footer={signInFooter}>
+        <Alert variant="destructive">
+          This link is missing its token. Open the link from the email again, or{' '}
+          <Link href="/register" className="underline">
+            sign up again
+          </Link>
+          .
+        </Alert>
+      </AuthCard>
+    );
+  }
+
+  return (
+    <AuthCard
+      title="Choose a password"
+      description="This finishes creating your business account."
+      footer={signInFooter}
+    >
+      <form
+        onSubmit={form.handleSubmit(({ password }) =>
+          complete.mutate(
+            { token, password },
+            {
+              onSuccess: (me) => router.replace(homeFor(me)),
+              onError: (error) => applyServerErrors(form, error),
+            },
+          ),
+        )}
+        noValidate
+        className="flex flex-col gap-4"
+      >
+        <FormError error={complete.error} />
+        <Field
+          id="password"
+          label="Password"
+          error={errors.password?.message}
+          hint={`At least ${PASSWORD_MIN_LENGTH} characters. A short phrase works well.`}
+        >
+          <Input
+            type="password"
+            autoComplete="new-password"
+            {...describedBy('password', errors.password?.message, true)}
+            {...form.register('password')}
+          />
+        </Field>
+        <Field id="confirm" label="Confirm password" error={errors.confirm?.message}>
+          <Input
+            type="password"
+            autoComplete="new-password"
+            {...describedBy('confirm', errors.confirm?.message)}
+            {...form.register('confirm')}
+          />
+        </Field>
+        <Button type="submit" disabled={complete.isPending}>
+          {complete.isPending ? 'Creating your account…' : 'Create account'}
         </Button>
       </form>
     </AuthCard>

@@ -5,16 +5,27 @@ export const PASSWORD = 'correct horse battery staple';
 
 export const uniqueEmail = (label: string) => `${label}-${randomUUID().slice(0, 8)}@example.test`;
 
-/** Registers a brand-new business and lands on its dashboard. */
+export const SIGNUP_LINK = /http\S+\/register\/complete\?token=\S+/;
+
+/**
+ * Signs up a brand-new business, following the emailed link to choose a password, and lands
+ * on its dashboard.
+ */
 export async function registerBusiness(page: Page, businessName = 'E2E Coffee House') {
+  const email = uniqueEmail('owner');
   await page.goto('/register');
   await page.getByLabel('Your name').fill('Erin Owner');
-  await page.getByLabel('Email').fill(uniqueEmail('owner'));
-  await page.getByLabel('Password').fill(PASSWORD);
+  await page.getByLabel('Email').fill(email);
   await page.getByLabel('Business name').fill(businessName);
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible();
+
+  await page.goto(await emailLink(page.request, email, SIGNUP_LINK));
+  await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
+  await page.getByLabel('Confirm password').fill(PASSWORD);
   await page.getByRole('button', { name: 'Create account' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeVisible();
-  return { base: page.url().replace(/\/dashboard$/, '') };
+  return { base: page.url().replace(/\/dashboard$/, ''), email };
 }
 
 export async function addCustomer(page: Page, base: string, name: string, email: string) {

@@ -56,7 +56,7 @@ function sessionScope(path: string): string {
 
 // Requests that must not trigger a refresh: they are how a session is created or renewed.
 const SESSION_ENDPOINTS =
-  /^(\/portal\/[^/]+)?\/auth\/(login|register|refresh|logout|set-password)$/;
+  /^(\/portal\/[^/]+)?\/auth\/(login|register|complete-registration|refresh|logout|set-password)$/;
 
 const refreshing = new Map<string, Promise<boolean>>();
 

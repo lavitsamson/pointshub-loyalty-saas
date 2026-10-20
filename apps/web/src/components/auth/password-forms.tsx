@@ -72,7 +72,8 @@ export function ForgotPasswordForm() {
   );
 }
 
-const NewPasswordSchema = z
+/** A new password typed twice. */
+export const NewPasswordSchema = z
   .object({ password: PasswordSchema, confirm: z.string() })
   .refine((v) => v.password === v.confirm, {
     path: ['confirm'],
