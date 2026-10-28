@@ -11,6 +11,7 @@ import { useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { AuthCard } from '@/components/auth/auth-card';
+import { DemoInboxNote } from '@/components/auth/demo-inbox-note';
 import { FormError } from '@/components/form-error';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/feedback';
@@ -40,6 +41,7 @@ export function ForgotPasswordForm() {
           If an account exists for <strong>{forgot.variables.email}</strong>, we have sent a link to
           reset its password. The link works once and expires in 30 minutes.
         </p>
+        <DemoInboxNote />
       </AuthCard>
     );
   }

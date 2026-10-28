@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { AuthCard } from '@/components/auth/auth-card';
+import { DemoInboxNote } from '@/components/auth/demo-inbox-note';
 import { NewPasswordSchema } from '@/components/auth/password-forms';
 import { FormError } from '@/components/form-error';
 import { Button } from '@/components/ui/button';
@@ -52,6 +53,7 @@ export function RegisterForm() {
           password and finish setting up {register.variables.businessName}. The link expires in 60
           minutes.
         </p>
+        <DemoInboxNote />
       </AuthCard>
     );
   }

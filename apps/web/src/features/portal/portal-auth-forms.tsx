@@ -15,6 +15,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { AuthCard } from '@/components/auth/auth-card';
+import { DemoInboxNote } from '@/components/auth/demo-inbox-note';
 import { FormError } from '@/components/form-error';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/feedback';
@@ -171,6 +172,7 @@ export function PortalRegisterForm() {
           password and finish joining. If you already collect points with {business?.name ?? 'us'},
           the same link sets up your existing account. It expires in 60 minutes.
         </p>
+        <DemoInboxNote />
       </AuthCard>
     );
   }
@@ -231,6 +233,7 @@ export function PortalForgotPasswordForm() {
           If <strong>{forgot.variables.email}</strong> is a member, we have sent it a link to choose
           a new password. The link works once and expires in 60 minutes.
         </p>
+        <DemoInboxNote />
       </AuthCard>
     );
   }
