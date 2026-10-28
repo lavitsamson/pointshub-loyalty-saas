@@ -155,6 +155,10 @@ purchases, concurrent owner removal.
 - Logs redact cookies, `Authorization` and `Set-Cookie`. Responses never include password or
   token hashes (explicit response mapping). Unexpected errors return a bare 500.
 - Helmet on the API, a 100 kB request body limit.
+- In the deployed stack only Caddy publishes ports; the database, Redis, RabbitMQ and the API
+  are reachable only on the internal network. Caddy replaces any client-supplied
+  `X-Forwarded-For`, so rate limits cannot be dodged by spoofing it. Containers run as a
+  non-root user.
 - pnpm refuses dependency versions published less than 14 days ago (`minimumReleaseAge`), and
   the lockfile pins exact versions.
 
@@ -178,3 +182,9 @@ and never writes SQL, so injected instructions cannot reach other tenants' data 
   ask for a password or a name. Only the holder of the signed link sees it.
 - **The OpenAPI document at `/api/docs` is public.** It describes routes that are all
   authenticated and documented in the repository anyway.
+- **The public demo's inbox is readable by anyone.** The demo delivers no email; Mailpit
+  captures it and publishes it so visitors can follow sign-up and reset links. Anyone could
+  therefore use a link meant for someone else, on the demo only. Every "Check your email" screen
+  says so and asks for a made-up address, Mailpit keeps only the newest 500 messages, and the
+  whole database is wiped nightly. A real deployment sends email through an SMTP provider and
+  publishes no inbox ([ADR 0008](adr/0008-single-host-demo-deployment.md)).

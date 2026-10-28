@@ -12,3 +12,4 @@ the options considered, the decision and its consequences.
 | [0005](0005-transactional-outbox.md)        | Transactional outbox with idempotent consumers                    | Accepted |
 | [0006](0006-customer-portal-sessions.md)    | Portal sessions scoped to one business; joining by email link     | Accepted |
 | [0007](0007-billing-and-plan-limits.md)     | Verified Stripe webhooks set the plan; plan limits under a lock   | Accepted |
+| [0008](0008-single-host-demo-deployment.md) | The public demo runs on one host with Docker Compose              | Accepted |

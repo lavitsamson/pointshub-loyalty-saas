@@ -6,28 +6,45 @@
 Staff record purchases, customers earn points and climb tiers, and owners see what keeps their
 regulars coming back.
 
-> Status: in active development — see [progress](docs/PROGRESS.md).
+**Live demo:** coming soon — the deployment is described in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Sign in with the [demo logins](#demo-logins); the demo resets every night.
+
+![Merchant dashboard: KPI cards, 30-day points chart and top rewards](docs/images/dashboard-light.png)
+
+<table>
+  <tr>
+    <td width="68%"><img src="docs/images/customer-profile.png" alt="Customer profile with balance, tier and points history"></td>
+    <td width="32%"><img src="docs/images/portal-home.png" alt="Customer portal on a phone: points balance, tier and recent activity"></td>
+  </tr>
+  <tr>
+    <td><img src="docs/images/customers.png" alt="Customer table with search, filters and bulk selection"></td>
+    <td><img src="docs/images/portal-rewards.png" alt="Rewards catalogue in the customer portal on a phone"></td>
+  </tr>
+</table>
+
+Dark mode: [dashboard](docs/images/dashboard-dark.png). Screenshots are regenerated from the
+seeded demo with `pnpm screenshots`.
 
 ## Features
 
-Built so far are the merchant dashboard, points engine, event pipeline, customer portal and
-billing; the rest is tracked in [docs/PROGRESS.md](docs/PROGRESS.md).
-
-- **Merchant dashboard** ✅ — KPIs and a 30-day chart, customer table with search, filters, bulk
+- **Merchant dashboard** — KPIs and a 30-day chart, customer table with search, filters, bulk
   actions and CSV export, a fast record-purchase flow, rewards, fulfil-by-code redemptions,
   programme settings, team management and an audit log. Responsive, keyboard-accessible, dark mode.
-- **Points engine** ✅ — tier and campaign multipliers, FIFO expiry, an append-only ledger with a
+- **Points engine** — tier and campaign multipliers, FIFO expiry, an append-only ledger with a
   tested balance invariant, idempotent purchases and overspend-proof redemptions.
-- **Customer portal** ✅ — each business's own rewards page: join online or claim an account
+- **Customer portal** — each business's own rewards page: join online or claim an account
   made at the till via an emailed link, see balance, tier progress and history, redeem rewards
   for a code to show at the counter. Mobile-first; sessions only work at the business that issued
   them.
-- **Events** ✅ — transactional outbox → RabbitMQ → idempotent consumers for customer emails
+- **Events** — transactional outbox → RabbitMQ → idempotent consumers for customer emails
   and live dashboard stats, with backoff retries and a dead-letter queue; nightly FIFO points
   expiry and "points expiring in 7 days" emails.
-- **Billing** ✅ — Free and Pro plans on Stripe (test mode): Checkout, the Billing Portal, and
+- **Billing** — Free and Pro plans on Stripe (test mode): Checkout, the Billing Portal, and
   signature-verified webhooks applied exactly once and in the right order. The Free plan's
   100-customer limit is enforced under a lock, with an upgrade prompt in the dashboard.
+- **Production-ready packaging** — one multi-stage Dockerfile builds small, non-root images
+  for each app; the whole stack (with automatic HTTPS) runs from one Compose file, smoke-tested
+  in CI.
 
 ### Proposed features
 
@@ -62,6 +79,7 @@ More detail in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | Observability     | pino structured logs with request ids, health and readiness probes                             |
 | Testing           | Jest, Supertest, Testcontainers, Playwright                                                    |
 | CI                | GitHub Actions                                                                                 |
+| Deployment        | Docker, Docker Compose, Caddy                                                                  |
 
 ## Getting started
 
@@ -136,6 +154,7 @@ the demo businesses keep their seeded plans. To try upgrades with a
 | `pnpm db:seed`        | Recreates the demo businesses (safe to re-run)                                                               |
 | `pnpm db:seed:perf`   | Loads the performance dataset: one business with 50,000 customers                                            |
 | `pnpm perf:customers` | Benchmarks the customer list against the performance dataset (API must be running)                           |
+| `pnpm screenshots`    | Regenerates the README screenshots from the seeded demo                                                      |
 
 ## Testing
 
@@ -191,6 +210,14 @@ could not use them. With indexes on the ledger's foreign keys, and the customer-
 led by `customerId` (unique, so `tenantId` becomes a cheap filter), the same delete takes
 **0.1 seconds**.
 
+## Deployment
+
+The demo runs on a single VM: `deploy/compose.yml` starts the web app, API, worker,
+PostgreSQL, Redis, RabbitMQ and Mailpit behind Caddy, which handles HTTPS. Only Caddy is
+exposed. Migrations run as a one-off job before the API starts, and a cron job wipes and
+re-seeds the demo every night. Step-by-step setup, updates and operations are in
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
 ## Design decisions
 
 - [ADR 0001 — Multi-tenancy](docs/adr/0001-multi-tenancy.md): one shared database with a
@@ -216,6 +243,9 @@ led by `customerId` (unique, so `tenantId` becomes a cheap filter), the same del
 - [ADR 0007 — Billing and plan limits](docs/adr/0007-billing-and-plan-limits.md): only
   signature-verified Stripe webhooks change a plan; each is recorded once and re-reads the
   subscription under a tenant lock, so duplicates and out-of-order events cannot misapply.
+- [ADR 0008 — Single-host demo deployment](docs/adr/0008-single-host-demo-deployment.md): one
+  VM running Docker Compose behind Caddy, built from one multi-stage Dockerfile; demo email goes
+  to a public Mailpit inbox and the data resets nightly.
 
 Smaller decisions worth knowing:
 

@@ -149,10 +149,16 @@ Deferred: moved to [Proposed features](#proposed-features) for a later release.
 
 ## 10. Release
 
-- [ ] Dockerfiles
-- [ ] `docs/DEPLOYMENT.md`
-- [ ] Deploy
-- [ ] Screenshots / GIF, final README polish
+- [x] Dockerfile: one build, a non-root image per app (`api`, `worker`, `web` standalone) plus a
+      `tools` image for migrations and seeding
+- [x] Production stack (`deploy/compose.yml`): Caddy with automatic HTTPS in front, nothing else
+      exposed, migrations as a one-off job before the API and worker start
+- [x] Public demo inbox (Mailpit), linked from every "Check your email" screen when
+      `NEXT_PUBLIC_DEMO_INBOX_URL` is set; nightly reset with `seed:wipe`
+- [x] CI builds the production stack and smoke-tests it through Caddy
+- [x] `docs/DEPLOYMENT.md` and ADR 0008: single-host demo deployment
+- [x] Screenshots generated from the seeded demo (`pnpm screenshots`); README polish
+- [ ] Deploy (server, DNS and secrets to set up), then add the live demo link to the README
 
 ## Proposed features
 

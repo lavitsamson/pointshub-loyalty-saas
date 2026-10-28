@@ -26,7 +26,7 @@ flowchart LR
   Web -->|/api/v1 proxied, httpOnly cookies| API
   API --> PG
   API --> R
-  API -->|AI tools| LLM
+  API -.->|AI tools, proposed| LLM
   STRIPE -->|webhooks| API
   API -->|Checkout / Portal| STRIPE
   W -->|outbox relay| PG
@@ -46,6 +46,10 @@ flowchart LR
 | `packages/shared` | zod schemas and types shared by API and web: request/response contracts, enums, event envelope, Problem Details.                                                                           |
 | `packages/db`     | Prisma schema, migrations and the client factory.                                                                                                                                          |
 | `packages/config` | Shared TypeScript, ESLint and Prettier configuration.                                                                                                                                      |
+
+Each app ships as a Docker image built from one multi-stage `Dockerfile`; the public demo runs
+them on one host with Docker Compose behind Caddy ([DEPLOYMENT.md](DEPLOYMENT.md),
+[ADR 0008](adr/0008-single-host-demo-deployment.md)).
 
 ## Key flows
 
