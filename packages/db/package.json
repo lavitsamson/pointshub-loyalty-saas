@@ -23,6 +23,7 @@
     "migrate:deploy": "prisma migrate deploy",
     "studio": "prisma studio",
     "seed": "tsx prisma/seed/index.ts",
+    "seed:wipe": "tsx prisma/seed/index.ts --wipe",
     "seed:perf": "tsx prisma/seed/perf.ts"
   },
   "dependencies": {

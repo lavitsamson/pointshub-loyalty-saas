@@ -1,8 +1,9 @@
 /**
- * Demo data. Safe to re-run: it deletes the demo businesses and users and recreates them,
- * which is also how the public demo resets nightly.
+ * Demo data. Safe to re-run: it deletes the demo businesses and users and recreates them.
+ * The public demo resets nightly with --wipe, which first empties the whole database.
  *
  *   pnpm db:seed
+ *   pnpm --filter @pointshub/db seed:wipe
  */
 import argon2 from 'argon2';
 import path from 'node:path';
@@ -28,6 +29,16 @@ function nextWeekend(now: Date): { startsAt: Date; endsAt: Date } {
   const day = start.getUTCDay();
   start.setUTCDate(start.getUTCDate() + (day === 0 ? -1 : 6 - day));
   return { startsAt: start, endsAt: new Date(start.getTime() + 2 * DAY_MS) };
+}
+
+/** Empties every table but the migration history, including businesses visitors created. */
+async function wipe(db: PrismaClient): Promise<void> {
+  const tables = await db.$queryRaw<{ tablename: string }[]>`
+    SELECT tablename FROM pg_tables
+    WHERE schemaname = current_schema() AND tablename <> '_prisma_migrations'`;
+  await db.$executeRawUnsafe(
+    `TRUNCATE ${tables.map((t) => `"${t.tablename}"`).join(', ')} CASCADE`,
+  );
 }
 
 async function reset(db: PrismaClient): Promise<void> {
@@ -137,7 +148,7 @@ async function main(): Promise<void> {
   const db = createPrismaClient({ connectionString });
   const started = Date.now();
   try {
-    await reset(db);
+    await (process.argv.includes('--wipe') ? wipe(db) : reset(db));
     const passwordHash = await argon2.hash(DEMO_PASSWORD, { type: argon2.argon2id });
     const now = new Date();
     const random = createRandom(SEED);
