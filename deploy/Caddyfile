@@ -1,0 +1,24 @@
+# Caddy obtains and renews certificates for both hostnames automatically.
+#
+# It replaces any X-Forwarded-For header a client sends with the client's real address, which
+# the API's rate limits and audit log rely on (TRUST_PROXY_HOPS=1 in compose.yml).
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# The OpenAPI docs come straight from the API; everything else, /api/v1 included, goes
+	# through the web app.
+	handle /api/docs* {
+		reverse_proxy api:4000
+	}
+	handle {
+		reverse_proxy web:3000
+	}
+}
+
+# The public demo inbox: every email the demo sends, readable by anyone.
+{$INBOX_DOMAIN} {
+	encode zstd gzip
+	header X-Robots-Tag "noindex, nofollow"
+	reverse_proxy mailpit:8025
+}

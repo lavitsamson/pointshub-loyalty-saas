@@ -39,6 +39,48 @@ jobs:
 
       - run: pnpm build
 
+  docker:
+    name: Production stack (Docker)
+    needs: verify
+    # Pinned so a runner image upgrade is a deliberate change, not a surprise.
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: deploy
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Configure
+        run: |
+          {
+            echo DOMAIN=localhost
+            echo INBOX_DOMAIN=mail.localhost
+            echo POSTGRES_PASSWORD=$(openssl rand -hex 32)
+            echo RABBITMQ_PASSWORD=$(openssl rand -hex 32)
+            echo JWT_SECRET=$(openssl rand -hex 32)
+          } > .env
+
+      - name: Build and start
+        run: docker compose up -d --build --wait
+
+      - name: Seed the demo data
+        run: docker compose run --rm seed
+
+      # Through Caddy, the web app's rewrite and the API, as a visitor would reach them.
+      - name: Smoke test
+        run: |
+          curl -fsSk https://localhost/api/v1/health/ready
+          curl -fsSk -o /dev/null https://localhost/login
+          curl -fsSk -o /dev/null https://localhost/api/docs
+          curl -fsSk -o /dev/null --resolve mail.localhost:443:127.0.0.1 https://mail.localhost/
+          curl -fsSk -o /dev/null -H 'Content-Type: application/json' \
+            -H 'X-Requested-With: XMLHttpRequest' \
+            -d '{"email":"owner@beanbrew.demo","password":"DemoPass123!"}' \
+            https://localhost/api/v1/auth/login
+
+      - if: failure()
+        run: docker compose logs
+
   e2e:
     name: End-to-end (Playwright)
     needs: verify

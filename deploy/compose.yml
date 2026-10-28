@@ -1,0 +1,169 @@
+# The public demo: every service on one host, with Caddy terminating TLS. See docs/DEPLOYMENT.md.
+#
+#   cd deploy && cp .env.example .env   # then fill it in
+#   docker compose up -d --build
+#
+# Only Caddy publishes ports. The database, Redis, RabbitMQ and the API are reachable from
+# inside the Compose network alone.
+
+# Not "pointshub": that is the local development stack, and its volumes must stay separate.
+name: pointshub-demo
+
+x-app-env: &app-env
+  NODE_ENV: production
+  DATABASE_URL: postgresql://pointshub:${POSTGRES_PASSWORD:?}@postgres:5432/pointshub?schema=public
+  REDIS_URL: redis://redis:6379
+  RABBITMQ_URL: amqp://pointshub:${RABBITMQ_PASSWORD:?}@rabbitmq:5672
+  WEB_ORIGIN: https://${DOMAIN:?}
+  # Mailpit captures every email; the demo inbox shows them to visitors.
+  SMTP_HOST: mailpit
+  SMTP_PORT: '1025'
+  MAIL_FROM: PointsHub demo <no-reply@${DOMAIN}>
+  LOG_LEVEL: info
+
+x-tools: &tools
+  build:
+    context: ..
+    target: tools
+  image: pointshub-tools
+  environment: *app-env
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+  caddy:
+    image: caddy:2.11.7-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      DOMAIN: ${DOMAIN}
+      INBOX_DOMAIN: ${INBOX_DOMAIN:?}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - web
+      - mailpit
+
+  web:
+    build:
+      context: ..
+      target: web
+      args:
+        API_URL: http://api:4000
+        NEXT_PUBLIC_DEMO_INBOX_URL: https://${INBOX_DOMAIN}
+    image: pointshub-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+
+  api:
+    build:
+      context: ..
+      target: api
+    image: pointshub-api
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      API_PORT: '4000'
+      # Caddy sets X-Forwarded-For to the client's address and the web app's /api/v1 rewrite
+      # passes it on unchanged, so the API trusts exactly one entry.
+      TRUST_PROXY_HOPS: '1'
+      JWT_SECRET: ${JWT_SECRET:?}
+      COOKIE_SECURE: 'true'
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_PRO_PRICE_ID: ${STRIPE_PRO_PRICE_ID:-}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ..
+      target: worker
+    image: pointshub-worker
+    restart: unless-stopped
+    environment: *app-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  # Applies pending migrations, then exits; the API and worker wait for it.
+  migrate:
+    <<: *tools
+    command: ['pnpm', 'migrate:deploy']
+    restart: 'no'
+
+  # Empties the database and loads the demo businesses: run by the nightly reset.
+  #   docker compose run --rm seed
+  seed:
+    <<: *tools
+    command: ['pnpm', 'seed:wipe']
+    profiles: [tools]
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pointshub
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: pointshub
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U pointshub -d pointshub']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:4-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: pointshub
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:v1.31.5
+    restart: unless-stopped
+    environment:
+      # Keep only the newest messages; older ones are deleted. No relay is configured, so
+      # captured mail never leaves the server.
+      MP_MAX_MESSAGES: '500'
+
+volumes:
+  caddy-data:
+  caddy-config:
+  postgres-data:
+  rabbitmq-data:
