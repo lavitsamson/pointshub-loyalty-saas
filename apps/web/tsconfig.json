@@ -16,7 +16,9 @@
     "next-env.d.ts",
     "src",
     "e2e",
+    "screenshots",
     "playwright.config.ts",
+    "playwright.screenshots.config.ts",
     "next.config.ts",
     ".next/types/**/*.ts"
   ],
