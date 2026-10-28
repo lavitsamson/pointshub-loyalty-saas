@@ -45,12 +45,19 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // The Docker image runs a self-contained server with only the files it needs. Off by default
+  // because `next start` (local runs, e2e) does not serve the standalone output.
+  ...(process.env.BUILD_STANDALONE === 'true' && {
+    output: 'standalone',
+    outputFileTracingRoot: path.resolve(process.cwd(), '../..'),
+  }),
   headers() {
     // Pages only: the API sets its own headers (Helmet) on the responses proxied below.
     return Promise.resolve([{ source: '/((?!api/).*)', headers: securityHeaders }]);
   },
   // The browser only ever talks to this origin. Forwarding /api/v1 keeps the session cookies
-  // first-party and removes CORS from the browser path entirely (see ADR 0004).
+  // first-party and removes CORS from the browser path entirely (see ADR 0004). The destination
+  // is fixed at build time, so the Docker image takes API_URL as a build argument.
   rewrites() {
     return Promise.resolve([{ source: '/api/v1/:path*', destination: `${apiUrl}/api/v1/:path*` }]);
   },

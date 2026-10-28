@@ -12,6 +12,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build", "generate"],
+      "env": ["API_URL", "BUILD_STANDALONE", "NEXT_PUBLIC_*"],
       "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
     },
     "dev": {
@@ -34,6 +35,10 @@
       "cache": false
     },
     "test:e2e": {
+      "dependsOn": ["^build", "generate"],
+      "cache": false
+    },
+    "screenshots": {
       "dependsOn": ["^build", "generate"],
       "cache": false
     },
